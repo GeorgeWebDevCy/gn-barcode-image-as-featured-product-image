@@ -153,10 +153,12 @@ function gn_get_html_content($url, $barcode, $product_id) {
 
     if ($barcode_html === false || empty($barcode_html)) {
         gn_log_message_to_file('Barcode HTML not found for product ' . $product_id . ' with barcode ' . $barcode);
+        gn_log_message_to_file('Full HTML content: ' . print_r($barcode_html, true));
     }
 
     return $barcode_html;
 }
+
 
 /**
  * Extract image URL from HTML content
