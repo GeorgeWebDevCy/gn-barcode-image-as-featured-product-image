@@ -98,8 +98,10 @@ function gn_barcode_image_as_featured_product_image() {
         // Use cURL to get the HTML content
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, 'https://www.barcodelookup.com/' . $barcode);
+		log_message_to_file('https://www.barcodelookup.com/' . $barcode);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         $barcode_html = curl_exec($ch);
+		gn_log_message_to_file('Barcode HTML: ' . $barcode_html . ' for product ' . get_the_ID());
         curl_close($ch);
 
         // Check if the HTML content was retrieved successfully
