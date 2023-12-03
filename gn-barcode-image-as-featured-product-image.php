@@ -26,9 +26,6 @@
 // Exit if accessed directly.
 if (!defined('ABSPATH')) exit;
 
-// Define constants
-define('BARCODE_LOOKUP_URL', 'https://www.barcodelookup.com/');
-define('LOG_FILE_PATH', GNBARCODEI_PLUGIN_DIR . 'log.txt');
 
 // Plugin name
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
@@ -47,6 +44,10 @@ define('GNBARCODEI_PLUGIN_DIR', plugin_dir_path(GNBARCODEI_PLUGIN_FILE));
 
 // Plugin Folder URL
 define('GNBARCODEI_PLUGIN_URL', plugin_dir_url(GNBARCODEI_PLUGIN_FILE));
+
+// Define constants
+define('BARCODE_LOOKUP_URL', 'https://www.barcodelookup.com/');
+define('LOG_FILE_PATH', GNBARCODEI_PLUGIN_DIR . 'log.txt');
 
 /**
  * Load the main class for the core functionality
