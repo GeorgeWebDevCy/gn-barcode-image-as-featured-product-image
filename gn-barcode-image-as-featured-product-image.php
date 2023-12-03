@@ -86,30 +86,36 @@ function gn_barcode_image_as_featured_product_image() {
     $loop = new WP_Query($args);
     while ($loop->have_posts()) : $loop->the_post();
         // Check if the product already has a featured image
+		gn_log_message_to_file('Processing product ' . get_the_ID());
         if (has_post_thumbnail(get_the_ID())) {
             continue; // Skip to the next product if a featured image is already set
         }
 
         // Get the barcode
         $barcode = get_post_meta(get_the_ID(), '_sku', true);
-
+		gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . get_the_ID());
         // Get the image
         $barcode_image = @file_get_contents('https://www.barcodelookup.com/' . $barcode);
-
+		gn_log_message_to_file('Barcode image: ' . $barcode_image .'for product ' . get_the_ID());
         // Check if the image was retrieved successfully
         if ($barcode_image === false || empty($barcode_image)) {
+			gn_log_message_to_file('Barcode image not found for product ' . get_the_ID() . ' with barcode ' . $barcode);
             continue; // Skip to the next product if the image is not available
         }
 
         // Get the image URL
         $barcode_image_url = explode('<div id="largeProductImage"><img src="', $barcode_image);
+		gn_log_message_to_file('Barcode image URL: ' . $barcode_image_url[1]).' for product ' . get_the_ID();
         $barcode_image_url = explode('" alt="', $barcode_image_url[1]);
         $barcode_image_url = $barcode_image_url[0];
 
         // Set the image as the featured image
         $upload_dir = wp_upload_dir();
+		gn_log_message_to_file('Upload dir: ' . $upload_dir);
         $image_data = file_get_contents($barcode_image_url);
+		gn_log_message_to_file('Image data: ' . $image_data). ' for product ' . get_the_ID();
         $filename   = basename($barcode_image_url);
+		gn_log_message_to_file('Filename: ' . $filename);
         if (wp_mkdir_p($upload_dir['path'])) $file = $upload_dir['path'] . '/' . $filename;
         else $file = $upload_dir['basedir'] . '/' . $filename;
         file_put_contents($file, $image_data);
@@ -125,6 +131,7 @@ function gn_barcode_image_as_featured_product_image() {
         $attach_data = wp_generate_attachment_metadata($attach_id, $file);
         wp_update_attachment_metadata($attach_id, $attach_data);
         set_post_thumbnail(get_the_ID(), $attach_id);
+		log_message_to_file('Set featured image for product ' . get_the_ID() . ' with barcode ' . $barcode) . 'to ' . $barcode_image_url;
     endwhile;
     wp_reset_query();
 }
@@ -151,5 +158,12 @@ function gn_barcode_image_as_featured_product_image_activation() {
         wp_schedule_event(time(), '5minutes', 'gn_barcode_image_as_featured_product_image');
     }
 }
+
+function gn_log_message_to_file($message) {
+	$log_file = fopen(GNBARCODEI_PLUGIN_DIR . 'log.txt', 'a');
+	//message with timestamp
+	fwrite($log_file, date('Y-m-d H:i:s') . ' ' . $message . "\n");
+	fclose($log_file);
+}	
 
 GNBARCODEI();
