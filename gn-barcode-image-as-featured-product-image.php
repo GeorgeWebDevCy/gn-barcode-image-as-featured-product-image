@@ -75,10 +75,13 @@ register_activation_hook( __FILE__, 'gn_barcode_image_as_featured_product_image_
 //write a funtion that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
 //from lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
 function gn_barcode_image_as_featured_product_image() {
+    // Set the number of products to process at a time
+    $products_per_batch = 5;
+
     // Get all products
     $args = array(
         'post_type'      => 'product',
-        'posts_per_page' => -1,
+        'posts_per_page' => $products_per_batch,
     );
     $loop = new WP_Query($args);
     while ($loop->have_posts()) : $loop->the_post();
