@@ -164,6 +164,33 @@ function gn_log_message_to_file($message) {
 	//message with timestamp
 	fwrite($log_file, date('Y-m-d H:i:s') . ' ' . $message . "\n");
 	fclose($log_file);
-}	
+}
+
+//add a log viewer to the admin menu
+function gn_barcode_image_as_featured_product_image_admin_menu() {
+	add_menu_page('GN Barcode Image As Featured Product Image Log', 'GN Barcode Image As Featured Product Image Log', 'manage_options', 'gn_barcode_image_as_featured_product_image_log', 'gn_barcode_image_as_featured_product_image_log_viewer');
+}
+add_action('admin_menu', 'gn_barcode_image_as_featured_product_image_admin_menu');
+ //log viewer
+function gn_barcode_image_as_featured_product_image_log_viewer() {
+	$log_file = fopen(GNBARCODEI_PLUGIN_DIR . 'log.txt', 'r');
+	//read the log file
+	$log_file_contents = fread($log_file, filesize(GNBARCODEI_PLUGIN_DIR . 'log.txt'));
+	fclose($log_file);
+	//display the log file contents
+	echo '<pre>' . $log_file_contents . '</pre>';
+}
+
+//show the log file contents on the plugin page
+function gn_barcode_image_as_featured_product_image_plugin_page() {
+	$log_file = fopen(GNBARCODEI_PLUGIN_DIR . 'log.txt', 'r');
+	//read the log file
+	$log_file_contents = fread($log_file, filesize(GNBARCODEI_PLUGIN_DIR . 'log.txt'));
+	fclose($log_file);
+	//display the log file contents
+	echo '<pre>' . $log_file_contents . '</pre>';
+}
+add_action('admin_notices', 'gn_barcode_image_as_featured_product_image_plugin_page');
+
 
 GNBARCODEI();
