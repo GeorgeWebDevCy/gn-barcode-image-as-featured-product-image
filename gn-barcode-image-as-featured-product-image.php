@@ -132,7 +132,7 @@ function gn_barcode_image_as_featured_product_image() {
 //run the function every 5 minutes
 add_action( 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image' );
 if ( ! wp_next_scheduled( 'gn_barcode_image_as_featured_product_image' ) ) {
-	wp_schedule_event( time(), 'five_minutes', 'gn_barcode_image_as_featured_product_image' );
+	wp_schedule_event( time(), 'minutes', 5, 'gn_barcode_image_as_featured_product_image' );
 }
 function gn_barcode_image_as_featured_product_image_activation() {
 	if ( ! wp_next_scheduled( 'gn_barcode_image_as_featured_product_image' ) ) {
