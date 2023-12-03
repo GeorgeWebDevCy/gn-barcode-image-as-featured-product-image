@@ -10,7 +10,7 @@
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
- * Description:   Find image from barcode and set featured product image
+ * Description:   Find an image from a barcode and set it as the featured product image
  * Version:       1.0.0
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
@@ -24,24 +24,25 @@
  */
 
 // Exit if accessed directly.
-if ( ! defined( 'ABSPATH' ) ) exit;
+if (!defined('ABSPATH')) exit;
+
 // Plugin name
-define( 'GNBARCODEI_NAME',			'GN Barcode Image As Featured Product Image' );
+define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define( 'GNBARCODEI_VERSION',		'1.0.0' );
+define('GNBARCODEI_VERSION', '1.0.0');
 
 // Plugin Root File
-define( 'GNBARCODEI_PLUGIN_FILE',	__FILE__ );
+define('GNBARCODEI_PLUGIN_FILE', __FILE__);
 
 // Plugin base
-define( 'GNBARCODEI_PLUGIN_BASE',	plugin_basename( GNBARCODEI_PLUGIN_FILE ) );
+define('GNBARCODEI_PLUGIN_BASE', plugin_basename(GNBARCODEI_PLUGIN_FILE));
 
 // Plugin Folder Path
-define( 'GNBARCODEI_PLUGIN_DIR',	plugin_dir_path( GNBARCODEI_PLUGIN_FILE ) );
+define('GNBARCODEI_PLUGIN_DIR', plugin_dir_path(GNBARCODEI_PLUGIN_FILE));
 
 // Plugin Folder URL
-define( 'GNBARCODEI_PLUGIN_URL',	plugin_dir_url( GNBARCODEI_PLUGIN_FILE ) );
+define('GNBARCODEI_PLUGIN_URL', plugin_dir_url(GNBARCODEI_PLUGIN_FILE));
 
 /**
  * Load the main class for the core functionality
@@ -57,23 +58,22 @@ require_once GNBARCODEI_PLUGIN_DIR . 'core/class-gn-barcode-image-as-featured-pr
  * @return  object|Gn_Barcode_Image_As_Featured_Product_Image
  */
 function GNBARCODEI() {
-	return Gn_Barcode_Image_As_Featured_Product_Image::instance();
+    return Gn_Barcode_Image_As_Featured_Product_Image::instance();
 }
 
-//check wooocommerce is installed before activating the plugin
+// Check if WooCommerce is installed before activating the plugin
 function gn_barcode_image_as_featured_product_image_activate() {
-	if ( ! class_exists( 'WooCommerce' ) ) {
-		deactivate_plugins( plugin_basename( __FILE__ ) );
-		wp_die( __( 'This plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.', 'gn-barcode-image-as-featured-product-image' ) );
-	}
+    if (!class_exists('WooCommerce')) {
+        deactivate_plugins(plugin_basename(__FILE__));
+        wp_die(__('This plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.', 'gn-barcode-image-as-featured-product-image'));
+    }
 }
-register_activation_hook( __FILE__, 'gn_barcode_image_as_featured_product_image_activate' );
+register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_activate');
 
+// Look up an image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 
-//lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
-
-//write a funtion that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
-//from lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
+// Write a function that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
+// from lookup image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
     $products_per_batch = 5;
@@ -129,20 +129,27 @@ function gn_barcode_image_as_featured_product_image() {
     wp_reset_query();
 }
 
+// Add custom interval for every 5 minutes
+function gn_add_five_minute_interval($schedules) {
+    $schedules['5minutes'] = array(
+        'interval' => 300,
+        'display'  => __('Every 5 Minutes'),
+    );
+    return $schedules;
+}
+add_filter('cron_schedules', 'gn_add_five_minute_interval');
+
 // Run the function every 5 minutes
 add_action('gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image');
 if (!wp_next_scheduled('gn_barcode_image_as_featured_product_image')) {
-    wp_schedule_event(time(), 'interval', 300, 'gn_barcode_image_as_featured_product_image');
+    wp_schedule_event(time(), '5minutes', 'gn_barcode_image_as_featured_product_image');
 }
 
 // Activation hook to ensure the scheduled event is set
 function gn_barcode_image_as_featured_product_image_activation() {
     if (!wp_next_scheduled('gn_barcode_image_as_featured_product_image')) {
-		wp_schedule_event(time(), 'interval', 300, 'gn_barcode_image_as_featured_product_image');
-	
+        wp_schedule_event(time(), '5minutes', 'gn_barcode_image_as_featured_product_image');
     }
 }
-
-
 
 GNBARCODEI();
