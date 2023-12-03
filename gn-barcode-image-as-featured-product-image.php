@@ -72,6 +72,71 @@ register_activation_hook( __FILE__, 'gn_barcode_image_as_featured_product_image_
 
 //lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
 
+//write a funtion that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
+//from lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
+function gn_barcode_image_as_featured_product_image() {
+    // Get all products
+    $args = array(
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+    );
+    $loop = new WP_Query($args);
+    while ($loop->have_posts()) : $loop->the_post();
+        // Check if the product already has a featured image
+        if (has_post_thumbnail(get_the_ID())) {
+            continue; // Skip to the next product if a featured image is already set
+        }
+
+        // Get the barcode
+        $barcode = get_post_meta(get_the_ID(), '_sku', true);
+
+        // Get the image
+        $barcode_image = @file_get_contents('https://www.barcodelookup.com/' . $barcode);
+
+        // Check if the image was retrieved successfully
+        if ($barcode_image === false || empty($barcode_image)) {
+            continue; // Skip to the next product if the image is not available
+        }
+
+        // Get the image URL
+        $barcode_image_url = explode('<div id="largeProductImage"><img src="', $barcode_image);
+        $barcode_image_url = explode('" alt="', $barcode_image_url[1]);
+        $barcode_image_url = $barcode_image_url[0];
+
+        // Set the image as the featured image
+        $upload_dir = wp_upload_dir();
+        $image_data = file_get_contents($barcode_image_url);
+        $filename   = basename($barcode_image_url);
+        if (wp_mkdir_p($upload_dir['path'])) $file = $upload_dir['path'] . '/' . $filename;
+        else $file = $upload_dir['basedir'] . '/' . $filename;
+        file_put_contents($file, $image_data);
+        $wp_filetype = wp_check_filetype($filename, null);
+        $attachment  = array(
+            'post_mime_type' => $wp_filetype['type'],
+            'post_title'     => sanitize_file_name($filename),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        );
+        $attach_id    = wp_insert_attachment($attachment, $file, get_the_ID());
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $attach_data = wp_generate_attachment_metadata($attach_id, $file);
+        wp_update_attachment_metadata($attach_id, $attach_data);
+        set_post_thumbnail(get_the_ID(), $attach_id);
+    endwhile;
+    wp_reset_query();
+}
+
+//run the function every 5 minutes
+add_action( 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image' );
+if ( ! wp_next_scheduled( 'gn_barcode_image_as_featured_product_image' ) ) {
+	wp_schedule_event( time(), 'five_minutes', 'gn_barcode_image_as_featured_product_image' );
+}
+function gn_barcode_image_as_featured_product_image_activation() {
+	if ( ! wp_next_scheduled( 'gn_barcode_image_as_featured_product_image' ) ) {
+		wp_schedule_event( time(), 'five_minutes', 'gn_barcode_image_as_featured_product_image' );
+	}
+}
+
 
 
 
