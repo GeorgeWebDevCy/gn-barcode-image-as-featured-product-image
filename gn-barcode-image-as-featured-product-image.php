@@ -26,7 +26,6 @@
 // Exit if accessed directly.
 if (!defined('ABSPATH')) exit;
 
-
 // Plugin name
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
@@ -45,10 +44,6 @@ define('GNBARCODEI_PLUGIN_DIR', plugin_dir_path(GNBARCODEI_PLUGIN_FILE));
 // Plugin Folder URL
 define('GNBARCODEI_PLUGIN_URL', plugin_dir_url(GNBARCODEI_PLUGIN_FILE));
 
-// Define constants
-define('BARCODE_LOOKUP_URL', 'https://www.barcodelookup.com/');
-define('LOG_FILE_PATH', GNBARCODEI_PLUGIN_DIR . 'log.txt');
-
 /**
  * Load the main class for the core functionality
  */
@@ -57,6 +52,8 @@ require_once GNBARCODEI_PLUGIN_DIR . 'core/class-gn-barcode-image-as-featured-pr
 /**
  * The main function to load the only instance
  *
+ * @author  George Nicolaou
+ * @since   1.0.0
  * @return  object|Gn_Barcode_Image_As_Featured_Product_Image
  */
 function GNBARCODEI() {
@@ -74,105 +71,46 @@ register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_a
 
 // Look up an image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 
-// Write a function that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW">
+// Write a function that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
 // from lookup image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
+    // Set the number of products to process at a time
     $products_per_batch = 20;
 
+    // Get all products
     $args = array(
         'post_type'      => 'product',
         'posts_per_page' => $products_per_batch,
     );
     $loop = new WP_Query($args);
     while ($loop->have_posts()) : $loop->the_post();
-        process_product(get_the_ID());
+        // Check if the product already has a featured image
+        gn_log_message_to_file('Processing product ' . get_the_ID());
+        if (has_post_thumbnail(get_the_ID())) {
+            continue; // Skip to the next product if a featured image is already set
+        }
+
+        // Get the barcode
+        $barcode = get_post_meta(get_the_ID(), '_sku', true);
+        gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . get_the_ID());
+
+        // Use cURL to get the HTML content
+        $barcode_html = gn_get_html_content('https://www.barcodelookup.com/' . $barcode, $barcode, get_the_ID());
+
+        // Check if the HTML content was retrieved successfully
+        if ($barcode_html === false || empty($barcode_html)) {
+            continue; // Skip to the next product if the HTML content is not available
+        }
+
+        // Extract the image URL
+        $image_url = extract_image_url($barcode_html, get_the_ID());
+
+        // Set the image as the featured image
+        if ($image_url !== false) {
+            set_featured_image($image_url, get_the_ID(), $barcode);
+        }
     endwhile;
-
     wp_reset_query();
-}
-
-function process_product($product_id) {
-    // Check if the product already has a featured image
-    gn_log_message_to_file('Processing product ' . $product_id);
-    if (has_post_thumbnail($product_id)) {
-        return; // Skip to the next product if a featured image is already set
-    }
-
-    // Get the barcode
-    $barcode = get_post_meta($product_id, '_sku', true);
-    gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . $product_id);
-
-    // Fetch barcode HTML content
-    $barcode_html = fetch_barcode_html($barcode);
-
-    // Check if the HTML content was retrieved successfully
-    if (!$barcode_html) {
-        return; // Skip to the next product if the HTML content is not available
-    }
-
-    // Extract image URL from HTML
-    $image_url = extract_image_url($barcode_html, $product_id);
-
-    // Set the image as the featured image
-    download_and_set_featured_image($image_url, $product_id);
-}
-
-function fetch_barcode_html($barcode) {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, BARCODE_LOOKUP_URL . $barcode);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    $barcode_html = curl_exec($ch);
-    curl_close($ch);
-
-    if ($barcode_html === false || empty($barcode_html)) {
-        gn_log_message_to_file('Barcode HTML not found for product ' . $product_id . ' with barcode ' . $barcode);
-        return false;
-    }
-
-    return $barcode_html;
-}
-
-function extract_image_url($barcode_html, $product_id) {
-    $dom = new DOMDocument;
-    libxml_use_internal_errors(true); // Suppress warnings
-    $dom->loadHTML($barcode_html);
-    libxml_clear_errors();
-
-    $image_elements = $dom->getElementById('largeProductImage');
-    if (!$image_elements) {
-        gn_log_message_to_file('Image element not found for product ' . $product_id . ' with barcode ' . $barcode);
-        return false;
-    }
-
-    $image_url = $image_elements->getElementsByTagName('img')->item(0)->getAttribute('src');
-    gn_log_message_to_file('Barcode image URL: ' . $image_url . ' for product ' . $product_id);
-
-    return $image_url;
-}
-
-function download_and_set_featured_image($image_url, $product_id) {
-    $upload_dir = wp_upload_dir();
-    gn_log_message_to_file('Upload dir: ' . $upload_dir);
-    $image_data = file_get_contents($image_url);
-    gn_log_message_to_file('Image data: ' . $image_data . ' for product ' . $product_id);
-    $filename   = basename($image_url);
-    gn_log_message_to_file('Filename: ' . $filename);
-    if (wp_mkdir_p($upload_dir['path'])) $file = $upload_dir['path'] . '/' . $filename;
-    else $file = $upload_dir['basedir'] . '/' . $filename;
-    file_put_contents($file, $image_data);
-    $wp_filetype = wp_check_filetype($filename, null);
-    $attachment  = array(
-        'post_mime_type' => $wp_filetype['type'],
-        'post_title'     => sanitize_file_name($filename),
-        'post_content'   => '',
-        'post_status'    => 'inherit',
-    );
-    $attach_id    = wp_insert_attachment($attachment, $file, $product_id);
-    require_once(ABSPATH . 'wp-admin/includes/image.php');
-    $attach_data = wp_generate_attachment_metadata($attach_id, $file);
-    wp_update_attachment_metadata($attach_id, $attach_data);
-    set_post_thumbnail($product_id, $attach_id);
-    gn_log_message_to_file('Set featured image for product ' . $product_id . ' to ' . $image_url);
 }
 
 // Add custom interval for every 5 minutes
@@ -198,14 +136,100 @@ function gn_barcode_image_as_featured_product_image_activation() {
     }
 }
 
+/**
+ * Retrieve HTML content using cURL
+ *
+ * @param string $url
+ * @param string $barcode
+ * @param int $product_id
+ * @return false|string
+ */
+function gn_get_html_content($url, $barcode, $product_id) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $barcode_html = curl_exec($ch);
+    curl_close($ch);
+
+    if ($barcode_html === false || empty($barcode_html)) {
+        gn_log_message_to_file('Barcode HTML not found for product ' . $product_id . ' with barcode ' . $barcode);
+    }
+
+    return $barcode_html;
+}
+
+/**
+ * Extract image URL from HTML content
+ *
+ * @param string $barcode_html
+ * @param int $product_id
+ * @return false|string
+ */
+function extract_image_url($barcode_html, $product_id) {
+    $dom = new DOMDocument;
+    libxml_use_internal_errors(true); // Suppress warnings
+    $dom->loadHTML($barcode_html);
+    libxml_clear_errors();
+
+    $image_elements = $dom->getElementById('largeProductImage');
+    if (!$image_elements) {
+        gn_log_message_to_file('Image element not found for product ' . $product_id . ' with barcode ' . $barcode);
+        gn_log_message_to_file('Full HTML content: ' . $barcode_html);
+        return false;
+    }
+
+    $image_url = $image_elements->getElementsByTagName('img')->item(0)->getAttribute('src');
+    gn_log_message_to_file('Barcode image URL: ' . $image_url . ' for product ' . $product_id);
+
+    return $image_url;
+}
+
+/**
+ * Set the image as the featured image
+ *
+ * @param string $image_url
+ * @param int $product_id
+ * @param string $barcode
+ */
+function set_featured_image($image_url, $product_id, $barcode) {
+    $upload_dir = wp_upload_dir();
+    gn_log_message_to_file('Upload dir: ' . print_r($upload_dir, true));
+    $image_data = file_get_contents($image_url);
+    gn_log_message_to_file('Image data: ' . print_r($image_data, true) . ' for product ' . $product_id);
+    $filename   = basename($image_url);
+    gn_log_message_to_file('Filename: ' . $filename);
+    if (wp_mkdir_p($upload_dir['path'])) $file = $upload_dir['path'] . '/' . $filename;
+    else $file = $upload_dir['basedir'] . '/' . $filename;
+    file_put_contents($file, $image_data);
+    $wp_filetype = wp_check_filetype($filename, null);
+    $attachment  = array(
+        'post_mime_type' => $wp_filetype['type'],
+        'post_title'     => sanitize_file_name($filename),
+        'post_content'   => '',
+        'post_status'    => 'inherit',
+    );
+    $attach_id    = wp_insert_attachment($attachment, $file, $product_id);
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    $attach_data = wp_generate_attachment_metadata($attach_id, $file);
+    wp_update_attachment_metadata($attach_id, $attach_data);
+    set_post_thumbnail($product_id, $attach_id);
+    gn_log_message_to_file('Set featured image for product ' . $product_id . ' with barcode ' . $barcode . ' to ' . $image_url);
+}
+
+/**
+ * Log a message to a file
+ *
+ * @param mixed $message
+ */
 function gn_log_message_to_file($message) {
-    $log_file = fopen(LOG_FILE_PATH, 'a');
-    //message with timestamp
-    fwrite($log_file, date('Y-m-d H:i:s') . ' ' . $message . "\n");
+    $log_file = fopen(GNBARCODEI_PLUGIN_DIR . 'log.txt', 'a');
+    // Message with timestamp
+    $formatted_message = date('Y-m-d H:i:s') . ' ' . print_r($message, true) . "\n";
+    fwrite($log_file, $formatted_message);
     fclose($log_file);
 }
 
-// Create plugin menu in admin area for admin users only where we can manually view the contents of the log file and delete it
+// Create plugin menu in the admin area for admin users only where we can manually view the contents of the log file and delete it
 function gn_barcode_image_as_featured_product_image_menu() {
     add_menu_page('GN Barcode Image As Featured Product Image Log', 'GN Barcode Image As Featured Product Image Log', 'manage_options', 'gn_barcode_image_as_featured_product_image_log', 'gn_barcode_image_as_featured_product_image_log_page', 'dashicons-media-code', 6);
 }
@@ -223,31 +247,26 @@ function gn_barcode_image_as_featured_product_image_log_page() {
     if (!current_user_can('manage_options')) {
         wp_die(__('You do not have sufficient permissions to access this page.'));
     }
-
     // Check if the log file exists
-    if (!file_exists(LOG_FILE_PATH)) {
+    if (!file_exists(GNBARCODEI_PLUGIN_DIR . 'log.txt')) {
         echo '<h1>Log file not found</h1>';
         return;
     }
-
     // Check if the log file is empty
-    if (filesize(LOG_FILE_PATH) == 0) {
+    if (filesize(GNBARCODEI_PLUGIN_DIR . 'log.txt') == 0) {
         echo '<h1>Log file is empty</h1>';
         return;
     }
-
     // Display the log file contents
     echo '<h1>Log file contents</h1>';
     echo '<pre>';
-    echo file_get_contents(LOG_FILE_PATH);
+    echo file_get_contents(GNBARCODEI_PLUGIN_DIR . 'log.txt');
     echo '</pre>';
-
     // Delete the log file
     if (isset($_POST['delete_log_file'])) {
-        unlink(LOG_FILE_PATH);
+        unlink(GNBARCODEI_PLUGIN_DIR . 'log.txt');
         echo '<h1>Log file deleted</h1>';
     }
-
     // Display the delete log file button
     echo '<form method="post" action="">';
     echo '<input type="submit" name="delete_log_file" value="Delete log file" />';
