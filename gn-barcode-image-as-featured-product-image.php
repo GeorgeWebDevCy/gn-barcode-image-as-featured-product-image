@@ -76,7 +76,7 @@ register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_a
 // from lookup image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
-    $products_per_batch = 5;
+    $products_per_batch = 20;
 
     // Get all products
     $args = array(
