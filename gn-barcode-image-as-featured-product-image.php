@@ -60,4 +60,19 @@ function GNBARCODEI() {
 	return Gn_Barcode_Image_As_Featured_Product_Image::instance();
 }
 
+//check wooocommerce is installed before activating the plugin
+function gn_barcode_image_as_featured_product_image_activate() {
+	if ( ! class_exists( 'WooCommerce' ) ) {
+		deactivate_plugins( plugin_basename( __FILE__ ) );
+		wp_die( __( 'This plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.', 'gn-barcode-image-as-featured-product-image' ) );
+	}
+}
+register_activation_hook( __FILE__, 'gn_barcode_image_as_featured_product_image_activate' );
+
+
+//lookup image from https://www.barcodelookup.com/9780141033570 and set as featured image
+
+
+
+
 GNBARCODEI();
