@@ -149,17 +149,16 @@ function gn_get_html_content($url, $barcode, $product_id) {
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $barcode_html = curl_exec($ch);
-    curl_close($ch);
-
+    
     if ($barcode_html === false || empty($barcode_html)) {
-        gn_log_message_to_file('Barcode HTML not found for product ' . $product_id . ' with barcode ' . $barcode);
-        gn_log_message_to_file('Full HTML content: ' . print_r($barcode_html, true));
+        // Log or handle the error here
+        gn_log_message_to_file('Error fetching HTML content for product ' . $product_id . ' with barcode ' . $barcode);
+        gn_log_message_to_file('cURL error: ' . curl_error($ch));
     }
-
+    
+    curl_close($ch);
     return $barcode_html;
 }
-
-
 /**
  * Extract image URL from HTML content
  *
