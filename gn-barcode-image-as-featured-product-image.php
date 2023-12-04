@@ -275,3 +275,13 @@ function gn_barcode_image_as_featured_product_image_log_page() {
 }
 
 GNBARCODEI();
+require 'plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$myUpdateChecker = PucFactory::buildUpdateChecker(
+	'https://github.com/GeorgeWebDevCy/gn-barcode-image-as-featured-product-image',
+	__FILE__,
+	'gn-barcode-image-as-featured-product-image'
+);
+//Set the branch that contains the stable release.
+$myUpdateChecker->setBranch('main');
