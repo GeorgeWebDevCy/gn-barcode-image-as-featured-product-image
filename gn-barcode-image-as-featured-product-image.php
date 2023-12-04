@@ -95,7 +95,10 @@ function gn_barcode_image_as_featured_product_image() {
         gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . get_the_ID());
 
         // Use cURL to get the HTML content
+        gn_log_message_to_file('Url being used is '.'https://www.barcodelookup.com/' . $barcode);
         $barcode_html = gn_get_html_content('https://www.barcodelookup.com/' . $barcode, $barcode, get_the_ID());
+        //log error if barcode_html is empty
+        gn_log_message_to_file('Barcode HTML: ' . $barcode_html . ' for product ' . get_the_ID());
 
         // Check if the HTML content was retrieved successfully
         if ($barcode_html === false || empty($barcode_html)) {
@@ -150,15 +153,25 @@ function gn_get_html_content($url, $barcode, $product_id) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $barcode_html = curl_exec($ch);
     
-    if ($barcode_html === false || empty($barcode_html)) {
-        // Log or handle the error here
-        gn_log_message_to_file('Error fetching HTML content for product ' . $product_id . ' with barcode ' . $barcode);
+    // Check for cURL errors
+    if ($barcode_html === false) {
+        // Log or handle the cURL error here
         gn_log_message_to_file('cURL error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
     }
     
+    // Check if the HTML content is empty
+    if (empty($barcode_html)) {
+        gn_log_message_to_file('Empty HTML content for product ' . $product_id . ' with barcode ' . $barcode);
+        curl_close($ch);
+        return false;
+    }
+
     curl_close($ch);
     return $barcode_html;
 }
+
 /**
  * Extract image URL from HTML content
  *
