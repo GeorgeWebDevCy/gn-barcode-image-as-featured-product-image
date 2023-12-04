@@ -269,7 +269,7 @@ function gn_barcode_image_as_featured_product_image_log_page() {
         echo '<h1>Log file deleted</h1>';
     }
     // Display the delete log file button
-    echo '<form method="post" action="">';
+    echo '<form method="post" action="' . esc_url($_SERVER['REQUEST_URI']) . '">'; // Form post URL
     echo '<input type="submit" name="delete_log_file" value="Delete log file" />';
     echo '</form>';
 }
