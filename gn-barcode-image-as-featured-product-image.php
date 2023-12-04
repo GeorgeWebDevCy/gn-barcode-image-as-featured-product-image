@@ -98,7 +98,7 @@ function gn_barcode_image_as_featured_product_image() {
         gn_log_message_to_file('Url being used is '.'https://www.barcodelookup.com/' . $barcode);
         $barcode_html = gn_get_html_content('https://www.barcodelookup.com/' . $barcode, $barcode, get_the_ID());
         //log error if barcode_html is empty
-        gn_log_message_to_file('Barcode HTML: ' . $barcode_html . ' for product ' . get_the_ID());
+        //gn_log_message_to_file('Barcode HTML: ' . $barcode_html . ' for product ' . get_the_ID());
 
         // Check if the HTML content was retrieved successfully
         if ($barcode_html === false || empty($barcode_html)) {
@@ -211,7 +211,7 @@ function extract_image_url($barcode_html, $product_id) {
     $image_elements = $dom->getElementById('largeProductImage');
     if (!$image_elements) {
         gn_log_message_to_file('Image element not found for product ' . $product_id . ' with barcode ' . $barcode);
-        gn_log_message_to_file('Full HTML content: ' . $barcode_html);
+        //gn_log_message_to_file('Full HTML content: ' . $barcode_html);
         return false;
     }
 
