@@ -140,16 +140,39 @@ function gn_barcode_image_as_featured_product_image_activation() {
     }
 }
 
+/**
+ * Retrieve HTML content using cURL
+ *
+ * @param string $url
+ * @param string $barcode
+ * @param int $product_id
+ * @return false|string
+ */
 function gn_get_html_content($url, $barcode, $product_id) {
     $ch = curl_init();
+    
+    // Set cURL options
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+    // Set multiple headers to mimic a regular browser
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language: en-US,en;q=0.9',
+        'Accept-Encoding: gzip, deflate, br',
+    ]);
+
+    // Sleep for 2 seconds between requests to avoid rate limiting
+    sleep(2);
+
+    // Execute cURL and get HTTP response code
     $barcode_html = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     
     // Log HTTP response code
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     gn_log_message_to_file('HTTP Response Code: ' . $http_code . ' for product ' . $product_id . ' with barcode ' . $barcode);
-    
+
     // Check for cURL errors
     if ($barcode_html === false) {
         // Log or handle the cURL error here
@@ -168,6 +191,8 @@ function gn_get_html_content($url, $barcode, $product_id) {
     curl_close($ch);
     return $barcode_html;
 }
+
+
 
 
 /**
