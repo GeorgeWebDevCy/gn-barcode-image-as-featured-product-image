@@ -102,6 +102,7 @@ function gn_barcode_image_as_featured_product_image() {
 
         // Check if the HTML content was retrieved successfully
         if ($barcode_html === false || empty($barcode_html)) {
+            gn_log_message_to_file('Skipped product ' . get_the_ID() . ' with barcode ' . $barcode . ' due to retrieval issues.');
             continue; // Skip to the next product if the HTML content is not available
         }
 
@@ -139,19 +140,15 @@ function gn_barcode_image_as_featured_product_image_activation() {
     }
 }
 
-/**
- * Retrieve HTML content using cURL
- *
- * @param string $url
- * @param string $barcode
- * @param int $product_id
- * @return false|string
- */
 function gn_get_html_content($url, $barcode, $product_id) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     $barcode_html = curl_exec($ch);
+    
+    // Log HTTP response code
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    gn_log_message_to_file('HTTP Response Code: ' . $http_code . ' for product ' . $product_id . ' with barcode ' . $barcode);
     
     // Check for cURL errors
     if ($barcode_html === false) {
@@ -171,6 +168,7 @@ function gn_get_html_content($url, $barcode, $product_id) {
     curl_close($ch);
     return $barcode_html;
 }
+
 
 /**
  * Extract image URL from HTML content
