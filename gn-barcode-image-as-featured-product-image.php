@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.0
+ * @version       1.0.1
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.0.0
+ * Version:       1.0.1
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.0.0');
+define('GNBARCODEI_VERSION', '1.0.1');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -71,6 +71,7 @@ register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_a
 
 // Look up an image from https://www.discogs.com/search?q=9780141033570&type=all and set it as the featured image
 
+// Look up an image from https://www.discogs.com/search?q=9780141033570&type=all and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
     $products_per_batch = 20;
@@ -86,6 +87,13 @@ function gn_barcode_image_as_featured_product_image() {
         gn_log_message_to_file('Processing product ' . get_the_ID());
         if (has_post_thumbnail(get_the_ID())) {
             continue; // Skip to the next product if a featured image is already set
+        }
+
+        // Check if the product has already been processed
+        $processed = get_post_meta(get_the_ID(), '_barcode_processed', true);
+        if ($processed) {
+            gn_log_message_to_file('Product ' . get_the_ID() . ' has already been processed. Skipping.');
+            continue;
         }
 
         // Get the barcode
@@ -105,13 +113,18 @@ function gn_barcode_image_as_featured_product_image() {
         // Extract the image URL
         $image_url = extract_image_url($barcode_html, get_the_ID());
         gn_log_message_to_file('Image URL from extract_image_url before if : ' . $image_url . ' for product ' . get_the_ID());
+
         // Set the image as the featured image
         if ($image_url !== false) {
             set_featured_image($image_url, get_the_ID(), $barcode);
+
+            // Mark the product as processed
+            update_post_meta(get_the_ID(), '_barcode_processed', true);
         }
     endwhile;
     wp_reset_query();
 }
+
 
 // Add custom interval for every 5 minutes
 function gn_add_five_minute_interval($schedules) {
@@ -339,6 +352,7 @@ function gn_barcode_image_as_featured_product_image_log_page_capability() {
 add_filter('option_page_capability_gn_barcode_image_as_featured_product_image_log', 'gn_barcode_image_as_featured_product_image_log_page_capability');
 
 // Log page
+// Log page
 function gn_barcode_image_as_featured_product_image_log_page() {
     // Check if the user is an admin
     if (!current_user_can('manage_options')) {
@@ -361,15 +375,32 @@ function gn_barcode_image_as_featured_product_image_log_page() {
     echo '</pre>';
     // Delete the log file
     if (isset($_POST['delete_log_file'])) {
+        // Reset the processed status for all products
+        gn_reset_processed_status();
+        
         unlink(GNBARCODEI_PLUGIN_DIR . 'log.txt');
         echo '<h1>Log file deleted</h1>';
-
     }
     // Display the delete log file button
     echo '<form method="post" action="' . esc_url($_SERVER['REQUEST_URI']) . '">'; // Form post URL
     echo '<input type="submit" name="delete_log_file" value="Delete log file" />';
     echo '</form>';
 }
+
+// Function to reset the processed status for all products
+function gn_reset_processed_status() {
+    $args = array(
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+    );
+    $products = new WP_Query($args);
+    while ($products->have_posts()) : $products->the_post();
+        // Reset the processed status
+        update_post_meta(get_the_ID(), '_barcode_processed', false);
+    endwhile;
+    wp_reset_query();
+}
+
 
 GNBARCODEI();
 require 'plugin-update-checker/plugin-update-checker.php';
