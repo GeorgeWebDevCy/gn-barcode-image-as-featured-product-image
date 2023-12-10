@@ -1,12 +1,1 @@
-2023-12-10 16:44:48 Processing product 16
-2023-12-10 16:44:48 Barcode: 5202846512623 for product 16
-2023-12-10 16:44:48 URL being used is https://www.discogs.com/search?q=5202846512623&type=all
-2023-12-10 16:44:49 cURL Request for product 16 with barcode 5202846512623 to URL: https://www.discogs.com/search?q=5202846512623
-2023-12-10 16:44:49 cURL Response Code: 200
-2023-12-10 16:44:49 Barcode image URL from extractImageURL: https://i.discogs.com/v9IFMQwpsuo97rgJGikdDdAFX4JYnJnXx64dhMkj0Q0/rs:fill/g:sm/q:40/h:300/w:300/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTY1MTUx/MzUtMTQyMTAwMDkz/Ny0xNzQ2LmpwZWc.jpeg for product 16
-2023-12-10 16:44:49 Setting featured image for product 16 with barcode 5202846512623
-2023-12-10 16:44:49  in set_featured_image Regular image for product 16 with barcode 5202846512623
-2023-12-10 16:44:49 Regular image for product 16 with barcode 5202846512623
-2023-12-10 16:44:50 Set featured image for product 16 with barcode 5202846512623 to /home/dev.georgenicolaou.me/public_html/wp-content/uploads/2023/12/data_image_d556366716668532e085b277e3458d26.jpg
-2023-12-10 16:44:50 Barcode image URL from gn_get_html_content: https://i.discogs.com/v9IFMQwpsuo97rgJGikdDdAFX4JYnJnXx64dhMkj0Q0/rs:fill/g:sm/q:40/h:300/w:300/czM6Ly9kaXNjb2dz/LWRhdGFiYXNlLWlt/YWdlcy9SLTY1MTUx/MzUtMTQyMTAwMDkz/Ny0xNzQ2LmpwZWc.jpeg for product 16
-2023-12-10 17:22:21 Processing product 16
+2023-12-10 19:07:25 Processing product 16
