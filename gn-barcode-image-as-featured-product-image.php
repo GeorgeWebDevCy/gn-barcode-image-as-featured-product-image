@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.0
+ * @version       1.0.5
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.0.0
+ * Version:       1.0.5
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.0.0');
+define('GNBARCODEI_VERSION', '1.0.5');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -73,14 +73,21 @@ register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_a
 
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
-    $products_per_batch = -1;
+    $products_per_batch = 50;
 
     // Get all products
     $args = array(
         'post_type'      => 'product',
         'posts_per_page' => $products_per_batch,
+        'meta_query'     => array(
+            array(
+                'key'   => '_processed_for_featured_image',
+                'value' => false, // Only process products with this custom field set to false
+            ),
+        ),
     );
     $loop = new WP_Query($args);
+
     while ($loop->have_posts()) : $loop->the_post();
         // Check if the product already has a featured image
         gn_log_message_to_file('Processing product ' . get_the_ID());
@@ -109,10 +116,13 @@ function gn_barcode_image_as_featured_product_image() {
         if ($image_url !== false) {
             set_featured_image($image_url, get_the_ID(), $barcode);
         }
+
+        // Mark the product as processed to avoid reprocessing in the next cron run
+        update_post_meta(get_the_ID(), '_processed_for_featured_image', true);
+
     endwhile;
     wp_reset_query();
 }
-
 // Add custom interval for every 5 minutes
 function gn_add_five_minute_interval($schedules) {
     $schedules['5minutes'] = array(
