@@ -69,10 +69,8 @@ function gn_barcode_image_as_featured_product_image_activate() {
 }
 register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_activate');
 
-// Look up an image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
+// Look up an image from https://www.discogs.com/search?q=9780141033570&type=all and set it as the featured image
 
-// Write a function that looks up the image <div id="largeProductImage"><img src="https://images.barcodelookup.com/77916/779164202-1.jpg" alt="Vaggelis Konitopoulos - Aroma Aigaiou / Greek Folk Music CD 2002 NEW"></div>
-// from lookup image from https://www.barcodelookup.com/9780141033570 and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
     $products_per_batch = 20;
@@ -94,11 +92,9 @@ function gn_barcode_image_as_featured_product_image() {
         $barcode = get_post_meta(get_the_ID(), '_sku', true);
         gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . get_the_ID());
 
-        // Use cURL to get the HTML content
-        gn_log_message_to_file('Url being used is '.'https://www.barcodelookup.com/' . $barcode);
-        $barcode_html = gn_get_html_content('https://www.barcodelookup.com/' . $barcode, $barcode, get_the_ID());
-        //log error if barcode_html is empty
-        //gn_log_message_to_file('Barcode HTML: ' . $barcode_html . ' for product ' . get_the_ID());
+        // Use WordPress HTTP API to get the HTML content
+        gn_log_message_to_file('URL being used is ' . 'https://www.discogs.com/search?q=' . $barcode . '&type=all');
+        $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . $barcode, $barcode, get_the_ID());
 
         // Check if the HTML content was retrieved successfully
         if ($barcode_html === false || empty($barcode_html)) {
@@ -108,7 +104,7 @@ function gn_barcode_image_as_featured_product_image() {
 
         // Extract the image URL
         $image_url = extract_image_url($barcode_html, get_the_ID());
-
+        gn_log_message_to_file('Image URL from extract_image_url before if : ' . $image_url . ' for product ' . get_the_ID());
         // Set the image as the featured image
         if ($image_url !== false) {
             set_featured_image($image_url, get_the_ID(), $barcode);
@@ -140,83 +136,73 @@ function gn_barcode_image_as_featured_product_image_activation() {
     }
 }
 
-/**
- * Retrieve HTML content using cURL
- *
- * @param string $url
- * @param string $barcode
- * @param int $product_id
- * @return false|string
- */
+
 function gn_get_html_content($url, $barcode, $product_id) {
-    $ch = curl_init();
-    
-    // Set cURL options
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $ch = curl_init($url);
 
-    // Set multiple headers to mimic a regular browser
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
-        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language: en-US,en;q=0.9',
-        'Accept-Encoding: gzip, deflate, br',
-    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3');
 
-    // Sleep for 2 seconds between requests to avoid rate limiting
-    sleep(2);
+    $html_content = curl_exec($ch);
+    $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    // Execute cURL and get HTTP response code
-    $barcode_html = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    
-    // Log HTTP response code
-    gn_log_message_to_file('HTTP Response Code: ' . $http_code . ' for product ' . $product_id . ' with barcode ' . $barcode);
+    // Log the cURL request details
+    gn_log_message_to_file('cURL Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url);
+    gn_log_message_to_file('cURL Response Code: ' . $response_code);
 
-    // Check for cURL errors
-    if ($barcode_html === false) {
-        // Log or handle the cURL error here
-        gn_log_message_to_file('cURL error: ' . curl_error($ch));
-        curl_close($ch);
-        return false;
-    }
-    
-    // Check if the HTML content is empty
-    if (empty($barcode_html)) {
-        gn_log_message_to_file('Empty HTML content for product ' . $product_id . ' with barcode ' . $barcode);
-        curl_close($ch);
+    if ($response_code !== 200) {
+        // Log error with response code
+        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . '. Response Code: ' . $response_code);
         return false;
     }
 
-    curl_close($ch);
-    return $barcode_html;
+    // Extract the image URL directly
+    $image_url = extractImageURL($html_content, $product_id);
+    set_featured_image($image_url, $product_id, $barcode);
+
+    if ($image_url === false) {
+        // Log error
+        gn_log_message_to_file('Image URL not found for product ' . $product_id . ' with barcode ' . $barcode);
+        return false;
+    }
+
+    // Log extracted image URL for debugging
+    gn_log_message_to_file('Barcode image URL from gn_get_html_content: ' . $image_url . ' for product ' . $product_id);
+
+    return $image_url;
 }
-
-
 
 
 /**
  * Extract image URL from HTML content
  *
- * @param string $barcode_html
+ * @param string $html
  * @param int $product_id
- * @return false|string
+ * @return string|false
  */
-function extract_image_url($barcode_html, $product_id) {
+function extractImageURL($html, $product_id) {
     $dom = new DOMDocument;
     libxml_use_internal_errors(true); // Suppress warnings
-    $dom->loadHTML($barcode_html);
+    $dom->loadHTML($html);
     libxml_clear_errors();
 
-    $image_elements = $dom->getElementById('largeProductImage');
-    if (!$image_elements) {
-        gn_log_message_to_file('Image element not found for product ' . $product_id . ' with barcode ' . $barcode);
-        //gn_log_message_to_file('Full HTML content: ' . $barcode_html);
+    $xpath = new DOMXPath($dom);
+    $imageElements = $xpath->query('//span[@class="thumbnail_center"]/img');
+
+    if ($imageElements->length === 0) {
+        // Log error
+        gn_log_message_to_file('Image element not found for product ' . $product_id);
         return false;
     }
 
-    $image_url = $image_elements->getElementsByTagName('img')->item(0)->getAttribute('src');
-    gn_log_message_to_file('Barcode image URL: ' . $image_url . ' for product ' . $product_id);
+    //$image_url = $imageElements->item(0)->getAttribute('src');
+    $image_url = $imageElements->item(0)->getAttribute('data-src');
+
+    // Log extracted image URL for debugging
+    gn_log_message_to_file('Barcode image URL from extractImageURL: ' . $image_url . ' for product ' . $product_id);
+    //gn_log_message_to_file('HTML content from Discogs: ' . $html);
+
 
     return $image_url;
 }
@@ -229,29 +215,103 @@ function extract_image_url($barcode_html, $product_id) {
  * @param string $barcode
  */
 function set_featured_image($image_url, $product_id, $barcode) {
+    gn_log_message_to_file('Setting featured image for product ' . $product_id . ' with barcode ' . $barcode);
+    // Check if the image is a data URI
+    if (strpos($image_url, 'data:image') === 0) {
+        gn_log_message_to_file(' in set_featured_image Data URI image for product ' . $product_id . ' with barcode ' . $barcode);
+        handle_data_uri_image($image_url, $product_id, $barcode);
+    
+    } else {
+        gn_log_message_to_file(' in set_featured_image Regular image for product ' . $product_id . ' with barcode ' . $barcode);
+        handle_regular_image($image_url, $product_id, $barcode);
+    }
+}
+
+/**
+ * Handle data URI image
+ *
+ * @param string $data_uri
+ * @param int $product_id
+ * @param string $barcode
+ */
+function handle_data_uri_image($data_uri, $product_id, $barcode) {
+    gn_log_message_to_file('Data URI image for product ' . $product_id . ' with barcode ' . $barcode);
+    // Decode the base64 image data
+    $base64_data = explode(',', $data_uri)[1];
+    $image_data = base64_decode($base64_data);
+
+    // Save the image to the uploads directory
+    $file = save_image_to_upload_dir($image_data);
+
+    // Set the image as the featured image
+    set_featured_image_from_file($file, $product_id, $barcode, 'image/jpeg'); // Change to 'image/png' for PNG images
+}
+
+/**
+ * Handle regular image URL
+ *
+ * @param string $image_url
+ * @param int $product_id
+ * @param string $barcode
+ */
+function handle_regular_image($image_url, $product_id, $barcode) {
+    gn_log_message_to_file('Regular image for product ' . $product_id . ' with barcode ' . $barcode);
+    // Fetch image data from the URL
+    $image_data = wp_remote_get($image_url);
+
+    if (is_array($image_data) && $image_data['response']['code'] === 200) {
+        // Save the image to the uploads directory
+        $file = save_image_to_upload_dir($image_data['body']);
+
+        // Set the image as the featured image
+        set_featured_image_from_file($file, $product_id, $barcode, $image_data['headers']['content-type']);
+    } else {
+        // Log error
+        gn_log_message_to_file('Error retrieving image data for product ' . $product_id . ' with barcode ' . $barcode);
+    }
+}
+
+/**
+ * Save image data to the uploads directory
+ *
+ * @param string $image_data
+ * @return string File path
+ */
+function save_image_to_upload_dir($image_data) {
     $upload_dir = wp_upload_dir();
-    gn_log_message_to_file('Upload dir: ' . print_r($upload_dir, true));
-    $image_data = file_get_contents($image_url);
-    gn_log_message_to_file('Image data: ' . print_r($image_data, true) . ' for product ' . $product_id);
-    $filename   = basename($image_url);
-    gn_log_message_to_file('Filename: ' . $filename);
-    if (wp_mkdir_p($upload_dir['path'])) $file = $upload_dir['path'] . '/' . $filename;
-    else $file = $upload_dir['basedir'] . '/' . $filename;
+    $file_name = 'data_image_' . md5($image_data) . '.jpg';
+    $file = $upload_dir['path'] . '/' . $file_name;
     file_put_contents($file, $image_data);
-    $wp_filetype = wp_check_filetype($filename, null);
-    $attachment  = array(
-        'post_mime_type' => $wp_filetype['type'],
-        'post_title'     => sanitize_file_name($filename),
+    return $file;
+}
+
+/**
+ * Set featured image from file
+ *
+ * @param string $file
+ * @param int $product_id
+ * @param string $barcode
+ * @param string $mime_type
+ */
+function set_featured_image_from_file($file, $product_id, $barcode, $mime_type) {
+    $attachment = array(
+        'post_mime_type' => $mime_type,
+        'post_title'     => sanitize_file_name(basename($file)),
         'post_content'   => '',
         'post_status'    => 'inherit',
     );
-    $attach_id    = wp_insert_attachment($attachment, $file, $product_id);
+
+    $attach_id = wp_insert_attachment($attachment, $file, $product_id);
+
     require_once(ABSPATH . 'wp-admin/includes/image.php');
     $attach_data = wp_generate_attachment_metadata($attach_id, $file);
     wp_update_attachment_metadata($attach_id, $attach_data);
+
     set_post_thumbnail($product_id, $attach_id);
-    gn_log_message_to_file('Set featured image for product ' . $product_id . ' with barcode ' . $barcode . ' to ' . $image_url);
+    gn_log_message_to_file('Set featured image for product ' . $product_id . ' with barcode ' . $barcode . ' to ' . $file);
 }
+
+
 
 /**
  * Log a message to a file
@@ -303,6 +363,7 @@ function gn_barcode_image_as_featured_product_image_log_page() {
     if (isset($_POST['delete_log_file'])) {
         unlink(GNBARCODEI_PLUGIN_DIR . 'log.txt');
         echo '<h1>Log file deleted</h1>';
+
     }
     // Display the delete log file button
     echo '<form method="post" action="' . esc_url($_SERVER['REQUEST_URI']) . '">'; // Form post URL
