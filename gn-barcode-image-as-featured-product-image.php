@@ -67,6 +67,20 @@ function gn_barcode_image_as_featured_product_image_activate() {
         wp_die(__('This plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.', 'gn-barcode-image-as-featured-product-image'));
     }
 }
+
+function update_processed_product_ids($product_id) {
+    $processed_product_ids = get_post_meta($product_id, 'processed_product_ids', true);
+    
+    if (!$processed_product_ids) {
+        $processed_product_ids = array();
+    }
+
+    $processed_product_ids[] = $product_id;
+    
+    update_post_meta($product_id, 'processed_product_ids', array_unique($processed_product_ids));
+}
+
+
 register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_activate');
 
 // Look up an image from https://www.discogs.com/search?q=9780141033570&type=all and set it as the featured image
@@ -81,11 +95,12 @@ function gn_barcode_image_as_featured_product_image() {
         'posts_per_page' => $products_per_batch,
         'meta_query'     => array(
             array(
-                'key'   => '_processed_for_featured_image',
-                'value' => false, // Only process products with this custom field set to false
+                'key'     => 'processed_product_ids',
+                'compare' => 'NOT EXISTS',
             ),
         ),
     );
+
     $loop = new WP_Query($args);
 
     while ($loop->have_posts()) : $loop->the_post();
@@ -115,6 +130,8 @@ function gn_barcode_image_as_featured_product_image() {
         // Set the image as the featured image
         if ($image_url !== false) {
             set_featured_image($image_url, get_the_ID(), $barcode);
+            // Update the list of processed product IDs
+            update_processed_product_ids($product_id);
         }
 
         // Mark the product as processed to avoid reprocessing in the next cron run
