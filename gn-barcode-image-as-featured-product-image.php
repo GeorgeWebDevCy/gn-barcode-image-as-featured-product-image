@@ -277,7 +277,7 @@ function handle_data_uri_image($data_uri, $product_id, $barcode) {
  * @param string $barcode
  */
 function handle_regular_image($image_url, $product_id, $barcode) {
-    $loffer->info(' in handle_regular_image Regular image for product ' . $product_id . ' with barcode ' . $barcode);
+    $logger->info(' in handle_regular_image Regular image for product ' . $product_id . ' with barcode ' . $barcode);
     // Fetch image data from the URL
     $image_data = wp_remote_get($image_url);
 
@@ -331,85 +331,6 @@ function set_featured_image_from_file($file, $product_id, $barcode, $mime_type) 
 
     set_post_thumbnail($product_id, $attach_id);
     $logger->info('Set featured image for product ' . $product_id . ' with barcode ' . $barcode . ' to ' . $file);
-}
-
-// Create plugin menu in the admin area for admin users only where we can manually view the contents of the log file and delete it
-function gn_barcode_image_as_featured_product_image_menu() {
-    add_menu_page('GN Barcode Image As Featured Product Image Log', 'GN Barcode Image As Featured Product Image Log', 'manage_options', 'gn_barcode_image_as_featured_product_image_log', 'gn_barcode_image_as_featured_product_image_log_page', 'dashicons-media-code', 6);
-}
-add_action('admin_menu', 'gn_barcode_image_as_featured_product_image_menu');
-
-// Check if the user is an admin to allow access to the log page
-function gn_barcode_image_as_featured_product_image_log_page_capability() {
-    return 'manage_options';
-}
-add_filter('option_page_capability_gn_barcode_image_as_featured_product_image_log', 'gn_barcode_image_as_featured_product_image_log_page_capability');
-
-// Log page
-function gn_barcode_image_as_featured_product_image_log_page() {
-    // Check if the user is an admin
-    if (!current_user_can('manage_options')) {
-        wp_die(__('You do not have sufficient permissions to access this page.'));
-    }
-
-    // Initialize the WordPress filesystem
-    global $wp_filesystem;
-    if (empty($wp_filesystem)) {
-        require_once ABSPATH . '/wp-admin/includes/file.php';
-        WP_Filesystem();
-    }
-
-    // Check if the filesystem was successfully initialized
-    if (!$wp_filesystem) {
-        // Output an error message or handle the error as needed
-        echo '<h1>Error initializing filesystem</h1>';
-        return;
-    }
-
-    // Define the log file path
-    $log_file_path = GNBARCODEI_PLUGIN_DIR . 'log.txt';
-
-    // Check if the log file exists or is writable
-    if (!$wp_filesystem->exists($log_file_path) || !$wp_filesystem->is_writable($log_file_path)) {
-        echo '<h1>Log file is not writable</h1>';
-
-        // Create the log file and make it writable
-        $created = $wp_filesystem->put_contents($log_file_path, '', FS_CHMOD_FILE);
-
-        // Check if the file was created successfully
-        if (!$created || !$wp_filesystem->exists($log_file_path) || !$wp_filesystem->is_writable($log_file_path)) {
-            echo '<h1>Log file could not be created or is not writable</h1>';
-            return;
-        } else {
-            echo '<h1>Log file created</h1>';
-        }
-    }
-
-    // Check if the log file is empty
-    if ($wp_filesystem->size($log_file_path) == 0) {
-        echo '<h1>Log file is empty</h1>';
-        return;
-    }
-
-    // Display the log file contents
-    echo '<h1>Log file contents</h1>';
-    echo '<pre>';
-    echo $wp_filesystem->get_contents($log_file_path);
-    echo '</pre>';
-
-    // Delete the log file
-    if (isset($_POST['delete_log_file'])) {
-        $wp_filesystem->delete($log_file_path);
-        echo '<h1>Log file deleted</h1>';
-    }
-
-    // Display the delete log file button
-    $logger->info('Before form generation');
-    
-    echo '<form method="post" action="' . esc_url($_SERVER['REQUEST_URI']) . '">'; // Form post URL
-    echo '<input type="submit" name="delete_log_file" value="Delete log file" />';
-    echo '</form>';
-    $logger->info('After form generation');
 }
 
 GNBARCODEI();
