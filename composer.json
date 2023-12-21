@@ -1,0 +1,5 @@
+{
+    "require": {
+        "veronalabs/logger-wp": "^1.1"
+    }
+}

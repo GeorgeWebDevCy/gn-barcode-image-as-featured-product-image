@@ -1,0 +1,109 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "505dbb5db2db6e8d747bb63911781ef7",
+    "packages": [
+        {
+            "name": "psr/log",
+            "version": "1.1.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/log.git",
+                "reference": "d49695b909c3b7628b6289db5479a1c204601f11"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/log/zipball/d49695b909c3b7628b6289db5479a1c204601f11",
+                "reference": "d49695b909c3b7628b6289db5479a1c204601f11",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.1.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Log\\": "Psr/Log/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "https://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for logging libraries",
+            "homepage": "https://github.com/php-fig/log",
+            "keywords": [
+                "log",
+                "psr",
+                "psr-3"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/log/tree/1.1.4"
+            },
+            "time": "2021-05-03T11:20:27+00:00"
+        },
+        {
+            "name": "veronalabs/logger-wp",
+            "version": "v1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/veronalabs/logger-wp.git",
+                "reference": "8b20eb101125f531c19ff1bb0225ab3b6ae5d8cc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/veronalabs/logger-wp/zipball/8b20eb101125f531c19ff1bb0225ab3b6ae5d8cc",
+                "reference": "8b20eb101125f531c19ff1bb0225ab3b6ae5d8cc",
+                "shasum": ""
+            },
+            "require": {
+                "psr/log": "^1.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "LoggerWp\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mostafa Soufi",
+                    "email": "mostafa@veronalabs.com"
+                }
+            ],
+            "description": "Logger for WordPress Based on PSR-3",
+            "support": {
+                "issues": "https://github.com/veronalabs/logger-wp/issues",
+                "source": "https://github.com/veronalabs/logger-wp/tree/v1.1"
+            },
+            "time": "2022-06-20T15:12:22+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
+}
