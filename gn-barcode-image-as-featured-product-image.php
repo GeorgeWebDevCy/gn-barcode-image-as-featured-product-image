@@ -1,6 +1,6 @@
 <?php
 /**
- * GN Barcode Image As Featured Product Image
+ * GN Barcode Image As Featured Product Image 
  *
  * @package       GNBARCODEI
  * @author        George Nicolaou
