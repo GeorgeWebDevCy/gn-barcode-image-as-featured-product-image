@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.6
+ * @version       1.0.7
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.0.6
+ * Version:       1.0.7
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.0.6');
+define('GNBARCODEI_VERSION', '1.0.7');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -48,11 +48,6 @@ define('GNBARCODEI_PLUGIN_URL', plugin_dir_url(GNBARCODEI_PLUGIN_FILE));
  * Load the main class for the core functionality
  */
 require_once GNBARCODEI_PLUGIN_DIR . 'core/class-gn-barcode-image-as-featured-product-image.php';
-//autoload 
-require_once GNBARCODEI_PLUGIN_DIR . 'vendor/autoload.php';
-use LoggerWp\Logger;
-use LoggerWp\Exception\LogerException;
-
 require 'plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
@@ -63,20 +58,6 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
 );
 //Set the branch that contains the stable release.
 $myUpdateChecker->setBranch('main');
-
-// create a log channel
-$logger = new Logger([
-    'dir_name'  => 'wpsms-logs', // wp-content/uploads/wpsms-logs/plugin-2022-06-11-37718a3a6b5ee53761291cf86edc9e10.log
-    'channel'   => 'plugin', // default dev
-    'logs_days' => 30
-]);
-
-try {
-    
-    
-} catch (Exception $e) {
-    Logger::getInstance()->warning($e->getMessage());
-}
 
 /**
  * The main function to load the only instance
