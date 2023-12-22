@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.7
+ * @version       1.0.8
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.0.7
+ * Version:       1.0.8
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -95,7 +95,10 @@ function gn_barcode_image_as_featured_product_image() {
         // Check if the product already has a featured image
         gn_log_message_to_file('Processing product ' . get_the_ID());
         if (has_post_thumbnail(get_the_ID())) {
+            gn_log_message_to_file('Product ' . get_the_ID() . ' already has a featured image. Skipping product.');
+            set_post_meta(get_the_ID(), 'processed_id', '1');
             continue; // Skip to the next product if a featured image is already set
+
         }
 
         // Get the barcode
@@ -106,10 +109,16 @@ function gn_barcode_image_as_featured_product_image() {
         gn_log_message_to_file('URL being used is ' . 'https://www.discogs.com/search?q=' . $barcode . '&type=all');
         $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . $barcode, $barcode, get_the_ID());
 
-        // Check if the HTML content was retrieved successfully
+        //if the barcode is not found in discogs, try using the product title instead of the barcode to search for the image
         if ($barcode_html === false || empty($barcode_html)) {
-            gn_log_message_to_file('Skipped product ' . get_the_ID() . ' with barcode ' . $barcode . ' due to retrieval issues.');
-            continue; // Skip to the next product if the HTML content is not available
+            gn_log_message_to_file('Barcode not found in Discogs for product ' . get_the_ID() . ' with barcode ' . $barcode . '. Trying to use the product title instead.');
+            $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . get_the_title(), $barcode, get_the_ID());
+        }
+
+        //if both barcode search and image search by title fail, try then skipm the product
+        if ($barcode_html === false || empty($barcode_html)) {
+            gn_log_message_to_file('Barcode not found in Discogs for product ' . get_the_ID() . ' with barcode ' . $barcode . '. Image search by title also failed. Skipping product.');
+            continue;
         }
 
         // Extract the image URL
@@ -372,6 +381,8 @@ function gn_barcode_image_as_featured_product_image_log_page() {
     // Delete the log file
     if (isset($_POST['delete_log_file'])) {
         unlink(GNBARCODEI_PLUGIN_DIR . 'log.txt');
+        //delete the processed_id meta keys
+        delete_processed_id_meta_key();
         echo '<h1>Log file deleted</h1>';
 
     }
@@ -380,6 +391,18 @@ function gn_barcode_image_as_featured_product_image_log_page() {
     echo '<input type="submit" name="delete_log_file" value="Delete log file" />';
     echo '</form>';
 }
+
+function delete_processed_id_meta_key() {
+    global $wpdb;
+    $wpdb->query("DELETE FROM $wpdb->postmeta WHERE meta_key = 'processed_id'");
+    //log the deleted meta keys
+    gn_log_message_to_file('Deleted processed_id meta keys');
+}
+
+
+
+
+
 
 GNBARCODEI();
 
