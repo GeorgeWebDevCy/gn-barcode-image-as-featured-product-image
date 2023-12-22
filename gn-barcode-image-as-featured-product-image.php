@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.9
+ * @version       1.1.0
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.0.9
+ * Version:       1.1.0
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.0.7');
+define('GNBARCODEI_VERSION', '1.1.0');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -91,6 +91,7 @@ function gn_barcode_image_as_featured_product_image() {
         'posts_per_page' => $products_per_batch,
     );
     $loop = new WP_Query($args);
+    gn_log_message_to_file('Before the while loop');
     while ($loop->have_posts()) : $loop->the_post();
         // Check if the product already has a featured image
         gn_log_message_to_file('Processing product ' . get_the_ID());
@@ -129,6 +130,7 @@ function gn_barcode_image_as_featured_product_image() {
             set_featured_image($image_url, get_the_ID(), $barcode);
         }
     endwhile;
+    gn_log_message_to_file('After the while loop');
     wp_reset_query();
 }
 
