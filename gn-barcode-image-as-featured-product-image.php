@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.4
+ * @version       1.1.5
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.4
+ * Version:       1.1.5
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.4');
+define('GNBARCODEI_VERSION', '1.1.5');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -83,12 +83,13 @@ register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_a
 
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
-    $products_per_batch = -1;
+    $products_per_batch = 1;
 
     // Get all products
     $args = array(
         'post_type'      => 'product',
         'posts_per_page' => $products_per_batch,
+        'status'         => 'publish',
     );
     $loop = new WP_Query($args);
     gn_log_message_to_file('Before the while loop');
@@ -98,6 +99,7 @@ function gn_barcode_image_as_featured_product_image() {
         $processed = get_post_meta(get_the_ID(), 'processed_id', true);
         if ($processed === '1' || has_post_thumbnail(get_the_ID())) {
             gn_log_message_to_file('Product ' . get_the_ID() . ' already has a featured image or has been processed. Skipping product.');
+            update_post_meta(get_the_ID(), 'processed_id', '1');
             continue; // Skip to the next product if a featured image is already set or the product has been processed
         }
 
