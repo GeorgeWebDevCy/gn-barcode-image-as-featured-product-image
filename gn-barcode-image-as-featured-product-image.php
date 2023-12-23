@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.7
+ * @version       1.1.8
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.7
+ * Version:       1.1.8
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.7');
+define('GNBARCODEI_VERSION', '1.1.8');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -172,17 +172,27 @@ function gn_barcode_image_as_featured_product_image_activation() {
 
 
 function gn_get_html_content($url, $barcode, $product_id) {
+    // Get a list of public proxies (Replace with your preferred proxy service)
+    $proxyList = file('https://www.proxy-list.download/api/v1/get?type=http');
+
+    // Select a random proxy from the list
+    $randomProxy = trim($proxyList[array_rand($proxyList)]);
+
     $ch = curl_init($url);
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3');
 
+    // Set the selected proxy
+    curl_setopt($ch, CURLOPT_PROXY, $randomProxy);
+    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+
     $html_content = curl_exec($ch);
     $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
-    // Log the cURL request details
-    gn_log_message_to_file('cURL Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url);
+    // Log the cURL request details, including the proxy used
+    gn_log_message_to_file('cURL Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url . ' using proxy: ' . $randomProxy);
     gn_log_message_to_file('cURL Response Code: ' . $response_code);
 
     if ($response_code !== 200) {
