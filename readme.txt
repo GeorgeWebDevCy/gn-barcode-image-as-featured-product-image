@@ -7,7 +7,7 @@ Tags:
 Requires at least: 
 Tested up to: 
 Requires PHP: 
-Stable tag: 1.1.13
+Stable tag: 1.1.14
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

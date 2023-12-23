@@ -1,5 +1,6 @@
 {
     "require": {
-        "veronalabs/logger-wp": "^1.1"
+        "veronalabs/logger-wp": "^1.1",
+        "calliostro/php-discogs-api": "^2.0"
     }
 }

@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.13
+ * @version       1.1.14
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.13
+ * Version:       1.1.14
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.13');
+define('GNBARCODEI_VERSION', '1.1.14');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -44,6 +44,9 @@ define('GNBARCODEI_PLUGIN_DIR', plugin_dir_path(GNBARCODEI_PLUGIN_FILE));
 // Plugin Folder URL
 define('GNBARCODEI_PLUGIN_URL', plugin_dir_url(GNBARCODEI_PLUGIN_FILE));
 
+// Include the Discogs API library
+require_once GNBARCODEI_PLUGIN_DIR . 'vendor/autoload.php';  // Adjust the path based on your project structure
+
 /**
  * Load the main class for the core functionality
  */
@@ -52,11 +55,10 @@ require 'plugin-update-checker/plugin-update-checker.php';
 use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 
 $myUpdateChecker = PucFactory::buildUpdateChecker(
-	'https://github.com/GeorgeWebDevCy/gn-barcode-image-as-featured-product-image',
-	__FILE__,
-	'gn-barcode-image-as-featured-product-image'
+    'https://github.com/GeorgeWebDevCy/gn-barcode-image-as-featured-product-image',
+    __FILE__,
+    'gn-barcode-image-as-featured-product-image'
 );
-//Set the branch that contains the stable release.
 $myUpdateChecker->setBranch('main');
 
 /**
@@ -67,6 +69,20 @@ $myUpdateChecker->setBranch('main');
  * @return  object|Gn_Barcode_Image_As_Featured_Product_Image
  */
 function GNBARCODEI() {
+    // Initialize Guzzle HandlerStack
+    $handler = \GuzzleHttp\HandlerStack::create();
+
+    // Create and configure the ThrottleSubscriber
+    $throttle = new \Discogs\Subscriber\ThrottleSubscriber();
+    $handler->push(\GuzzleHttp\Middleware::retry($throttle->decider(), $throttle->delay()));
+
+    // Initialize Discogs API client with the configured HandlerStack
+    $discogsClient = \Discogs\ClientFactory::factory([
+        'handler' => $handler,
+        'headers' => [
+            'User-Agent' => 'All Records Test App/0.1 +https://allrecords.com/',
+        ],
+    ]);
     return Gn_Barcode_Image_As_Featured_Product_Image::instance();
 }
 
@@ -79,8 +95,7 @@ function gn_barcode_image_as_featured_product_image_activate() {
 }
 register_activation_hook(__FILE__, 'gn_barcode_image_as_featured_product_image_activate');
 
-// Look up an image from https://www.discogs.com/search?q=9780141033570&type=all and set it as the featured image
-
+// Look up an image from Discogs and set it as the featured image
 function gn_barcode_image_as_featured_product_image() {
     // Set the number of products to process at a time
     $products_per_batch = 1;
@@ -93,7 +108,23 @@ function gn_barcode_image_as_featured_product_image() {
     );
     $loop = new WP_Query($args);
     gn_log_message_to_file('Before the while loop');
-    
+
+    // Your Discogs API credentials
+    $consumerKey = 'MefXPqYkBwPUteoNHoOb';
+    $consumerSecret = 'nCynliNLRbIOBJHwHYXNVsOxYPzQGgrF';
+    $requestTokenUrl = 'https://api.discogs.com/oauth/request_token';
+    $authorizeUrl = 'https://www.discogs.com/oauth/authorize';
+    $accessTokenUrl = 'https://api.discogs.com/oauth/access_token';
+
+    // Initialize the Discogs API client
+    $discogs = new \Discogs\DiscogsClient([
+        'key' => $consumerKey,
+        'secret' => $consumerSecret,
+        'request_token_url' => $requestTokenUrl,
+        'authorize_url' => $authorizeUrl,
+        'access_token_url' => $accessTokenUrl,
+    ]);
+
     while ($loop->have_posts()) : $loop->the_post();
         // Check if the product already has a featured image and has not been processed
         $processed = get_post_meta(get_the_ID(), 'processed_id', true);
@@ -112,34 +143,27 @@ function gn_barcode_image_as_featured_product_image() {
         $barcode = get_post_meta(get_the_ID(), '_sku', true);
         gn_log_message_to_file('Barcode: ' . $barcode . ' for product ' . get_the_ID());
 
-        // Use WordPress HTTP API to get the HTML content
-        gn_log_message_to_file('URL being used is ' . 'https://www.discogs.com/search?q=' . $barcode . '&type=all');
-        $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . $barcode, $barcode, get_the_ID());
-         
-        //if the barcode is not found in discogs, try using the product title instead of the barcode to search for the image
-        if ($barcode_html === false || empty($barcode_html)) {
-            gn_log_message_to_file('Barcode not found in Discogs for product ' . get_the_ID() . ' with barcode ' . $barcode . '. Trying to use the product title instead.');
-            //make sure the product title is encoded before using it in the URL
-        
-            $product_title = get_the_title();
-            $product_title = urlencode($product_title);
-            gn_log_message_to_file('Product title: ' . $product_title . ' for product ' . get_the_ID());
-            $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . $product_title, $barcode, get_the_ID());
-         
-        }
+        try {
+            // Obtain an access token (you may need to store this token securely)
+            $accessToken = $discogs->getAccessToken($barcode);
+            
+            // Make a request to the Discogs API using the access token
+            $results = $discogs->search([
+                'q' => $barcode,
+                'type' => 'release'
+            ], $accessToken['oauth_token'], $accessToken['oauth_token_secret']);
 
-        //if both barcode search and image search by title fail, try then skip the product
-        if ($barcode_html === false || empty($barcode_html)) {
-            gn_log_message_to_file('Barcode not found in Discogs for product ' . get_the_ID() . ' with barcode ' . $barcode . '. Image search by title also failed. Skipping product.');
-            continue;
-        }
+            if (!empty($results['results'])) {
+                $release = $results['results'][0];
+                $image_url = $release['cover_image'];
 
-        // Extract the image URL
-        $image_url = extract_image_url($barcode_html, get_the_ID());
-        gn_log_message_to_file('Image URL from extract_image_url before if : ' . $image_url . ' for product ' . get_the_ID());
-        // Set the image as the featured image
-        if ($image_url !== false) {
-            set_featured_image($image_url, get_the_ID(), $barcode);
+                if ($image_url !== false) {
+                    set_featured_image($image_url, get_the_ID(), $barcode);
+                }
+            }
+        } catch (\Exception $e) {
+            // Handle the exception (log or display an error message)
+            error_log('Discogs API Error: ' . $e->getMessage());
         }
     endwhile;
     gn_log_message_to_file('After the while loop');
@@ -147,7 +171,38 @@ function gn_barcode_image_as_featured_product_image() {
     wp_reset_postdata();
 }
 
+/**
+ * Use Discogs API to get HTML content
+ *
+ * @param string $url
+ * @param string $barcode
+ * @param int $product_id
+ * @return string|bool HTML content or false on failure
+ */
+function gn_get_html_content($url, $barcode, $product_id) {
+    try {
+        // Initialize Discogs API client
+        $client = new \Discogs\ClientFactory::factory([
+            'headers' => [
+                'User-Agent' => 'All Records Test App/0.1 +https://allrecords.com/',
+            ],
+        ]);
 
+        // Get HTML content from Discogs
+        $response = $client->getHttpClient()->get($url);
+        $html_content = $response->getBody()->getContents();
+
+        // Log success
+        gn_log_message_to_file('Successfully retrieved HTML content from Discogs for product ' . $product_id . ' with barcode ' . $barcode);
+
+        return $html_content;
+    } catch (\Exception $e) {
+        // Log error
+        gn_log_message_to_file('Error retrieving HTML content from Discogs for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $e->getMessage());
+
+        return false;
+    }
+}
 // Add custom interval for every 5 minutes
 function gn_add_five_minute_interval($schedules) {
     $schedules['5minutes'] = array(
@@ -170,86 +225,8 @@ function gn_barcode_image_as_featured_product_image_activation() {
         wp_schedule_event(time(), '5minutes', 'gn_barcode_image_as_featured_product_image');
     }
 }
-/**
- * Get HTML content using WordPress HTTP API
- *
- * @param string $url
- * @param string $barcode
- * @param int $product_id
- * @return string|false HTML content or false on failure
- */
-function gn_get_html_content($url, $barcode, $product_id) {
-    // Set the timeout for the request
-    $timeout = 20;
-
-    // Make the HTTP request using wp_remote_get
-    $response = wp_remote_get($url, array('timeout' => $timeout));
-
-    if (is_wp_error($response)) {
-        // Log error with response body
-        $error_message = $response->get_error_message();
-        $response_body = wp_remote_retrieve_body($response);
-        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $error_message);
-        gn_log_message_to_file('Response Body: ' . $response_body);
-        return false;
-    }
-
-    // Get the response code
-    $response_code = wp_remote_retrieve_response_code($response);
-
-    // Log the request details
-    gn_log_message_to_file('Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url);
-    gn_log_message_to_file('Response Code: ' . $response_code);
-
-    if ($response_code !== 200) {
-        // Log error with response code
-        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . '. Response Code: ' . $response_code);
-        return false;
-    }
-
-    // Get the HTML content from the response
-    $html_content = wp_remote_retrieve_body($response);
-
-    // Log the HTML content for debugging
-    gn_log_message_to_file('HTML Content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $html_content);
-
-    return $html_content;
-}
 
 
-
-/**
- * Extract image URL from HTML content
- *
- * @param string $html
- * @param int $product_id
- * @return string|false
- */
-function extractImageURL($html, $product_id) {
-    $dom = new DOMDocument;
-    libxml_use_internal_errors(true); // Suppress warnings
-    $dom->loadHTML($html);
-    libxml_clear_errors();
-
-    $xpath = new DOMXPath($dom);
-    $imageElements = $xpath->query('//span[@class="thumbnail_center"]/img');
-
-    if ($imageElements->length === 0) {
-        // Log error
-        gn_log_message_to_file('Image element not found for product ' . $product_id);
-        return false;
-    }
-
-    //$image_url = $imageElements->item(0)->getAttribute('src');
-    $image_url = $imageElements->item(0)->getAttribute('data-src');
-
-    // Log extracted image URL for debugging
-    gn_log_message_to_file('Barcode image URL from extractImageURL: ' . $image_url . ' for product ' . $product_id);
-    //gn_log_message_to_file('HTML content from Discogs: ' . $html);
-
-
-    return $image_url;
-}
 
 /**
  * Set the image as the featured image
