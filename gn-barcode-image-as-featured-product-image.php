@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.14
+ * @version       1.1.15
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.14
+ * Version:       1.1.15
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.14');
+define('GNBARCODEI_VERSION', '1.1.15');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -146,6 +146,11 @@ function gn_barcode_image_as_featured_product_image() {
         try {
             // Obtain an access token (you may need to store this token securely)
             $accessToken = $discogs->getAccessToken($barcode);
+
+            if (empty($accessToken)) {
+                gn_log_message_to_file('Error obtaining access token for product ' . get_the_ID());
+                continue;
+            }
             
             // Make a request to the Discogs API using the access token
             $results = $discogs->search([
@@ -164,13 +169,13 @@ function gn_barcode_image_as_featured_product_image() {
         } catch (\Exception $e) {
             // Handle the exception (log or display an error message)
             error_log('Discogs API Error: ' . $e->getMessage());
+            gn_log_message_to_file('Error processing product ' . get_the_ID() . ': ' . $e->getMessage());
         }
     endwhile;
     gn_log_message_to_file('After the while loop');
     // Reset post data
     wp_reset_postdata();
 }
-
 /**
  * Use Discogs API to get HTML content
  *
@@ -182,7 +187,7 @@ function gn_barcode_image_as_featured_product_image() {
 function gn_get_html_content($url, $barcode, $product_id) {
     try {
         // Initialize Discogs API client
-        $client = new \Discogs\ClientFactory::factory([
+        $client = \Discogs\ClientFactory::factory([
             'headers' => [
                 'User-Agent' => 'All Records Test App/0.1 +https://allrecords.com/',
             ],
@@ -203,6 +208,7 @@ function gn_get_html_content($url, $barcode, $product_id) {
         return false;
     }
 }
+
 // Add custom interval for every 5 minutes
 function gn_add_five_minute_interval($schedules) {
     $schedules['5minutes'] = array(
