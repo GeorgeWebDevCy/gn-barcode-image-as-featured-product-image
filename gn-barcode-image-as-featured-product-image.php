@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.11
+ * @version       1.1.12
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.11
+ * Version:       1.1.12
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.11');
+define('GNBARCODEI_VERSION', '1.1.12');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -172,30 +172,33 @@ function gn_barcode_image_as_featured_product_image_activation() {
 }
 
 
+/**
+ * Get HTML content using WordPress HTTP API
+ *
+ * @param string $url
+ * @param string $barcode
+ * @param int $product_id
+ * @return string|false HTML content or false on failure
+ */
 function gn_get_html_content($url, $barcode, $product_id) {
-    // Get a list of public proxies (Replace with your preferred proxy service)
-    $proxyList = file('https://www.proxy-list.download/api/v1/get?type=http');
+    // Set the timeout for the request
+    $timeout = 20;
 
-    // Select a random proxy from the list
-    $randomProxy = trim($proxyList[array_rand($proxyList)]);
-//log proxy that is being used
-    gn_log_message_to_file('Proxy being used: ' . $randomProxy);
-    $ch = curl_init($url);
+    // Make the HTTP request using wp_remote_get
+    $response = wp_remote_get($url, array('timeout' => $timeout));
 
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3');
+    if (is_wp_error($response)) {
+        // Log error
+        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $response->get_error_message());
+        return false;
+    }
 
-    // Set the selected proxy
-    curl_setopt($ch, CURLOPT_PROXY, $randomProxy);
-    curl_setopt($ch, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+    // Get the response code
+    $response_code = wp_remote_retrieve_response_code($response);
 
-    $html_content = curl_exec($ch);
-    $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    // Log the cURL request details, including the proxy used
-    gn_log_message_to_file('cURL Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url . ' using proxy: ' . $randomProxy);
-    gn_log_message_to_file('cURL Response Code: ' . $response_code);
+    // Log the request details
+    gn_log_message_to_file('Request for product ' . $product_id . ' with barcode ' . $barcode . ' to URL: ' . $url);
+    gn_log_message_to_file('Response Code: ' . $response_code);
 
     if ($response_code !== 200) {
         // Log error with response code
@@ -203,20 +206,13 @@ function gn_get_html_content($url, $barcode, $product_id) {
         return false;
     }
 
-    // Extract the image URL directly
-    $image_url = extractImageURL($html_content, $product_id);
-    set_featured_image($image_url, $product_id, $barcode);
+    // Get the HTML content from the response
+    $html_content = wp_remote_retrieve_body($response);
 
-    if ($image_url === false) {
-        // Log error
-        gn_log_message_to_file('Image URL not found for product ' . $product_id . ' with barcode ' . $barcode);
-        return false;
-    }
+    // Log the HTML content for debugging
+    gn_log_message_to_file('HTML Content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $html_content);
 
-    // Log extracted image URL for debugging
-    gn_log_message_to_file('Barcode image URL from gn_get_html_content: ' . $image_url . ' for product ' . $product_id);
-
-    return $image_url;
+    return $html_content;
 }
 
 
