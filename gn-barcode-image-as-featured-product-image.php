@@ -177,7 +177,8 @@ function gn_get_html_content($url, $barcode, $product_id) {
 
     // Select a random proxy from the list
     $randomProxy = trim($proxyList[array_rand($proxyList)]);
-
+//log proxy that is being used
+    gn_log_message_to_file('Proxy being used: ' . $randomProxy);
     $ch = curl_init($url);
 
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
