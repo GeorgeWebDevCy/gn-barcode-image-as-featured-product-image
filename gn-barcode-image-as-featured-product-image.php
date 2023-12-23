@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.8
+ * @version       1.1.9
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.8
+ * Version:       1.1.9
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -97,7 +97,7 @@ function gn_barcode_image_as_featured_product_image() {
     while ($loop->have_posts()) : $loop->the_post();
         // Check if the product already has a featured image and has not been processed
         $processed = get_post_meta(get_the_ID(), 'processed_id', true);
-        if ($processed === '1' || get_post_thumbnail_id(get_the_ID())) {
+        if ($processed === '1' || has_post_thumbnail(get_the_ID())) {
             gn_log_message_to_file('Product ' . get_the_ID() . ' already has a featured image or has been processed. Skipping product.');
             gn_log_message_to_file('has_post_thumbnail for product ' . get_the_ID() . ': ' . has_post_thumbnail(get_the_ID()));
             gn_log_message_to_file('Processed ID for product ' . get_the_ID() . ': ' . $processed);
