@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.12
+ * @version       1.1.13
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.12
+ * Version:       1.1.13
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.12');
+define('GNBARCODEI_VERSION', '1.1.13');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -170,8 +170,6 @@ function gn_barcode_image_as_featured_product_image_activation() {
         wp_schedule_event(time(), '5minutes', 'gn_barcode_image_as_featured_product_image');
     }
 }
-
-
 /**
  * Get HTML content using WordPress HTTP API
  *
@@ -188,8 +186,11 @@ function gn_get_html_content($url, $barcode, $product_id) {
     $response = wp_remote_get($url, array('timeout' => $timeout));
 
     if (is_wp_error($response)) {
-        // Log error
-        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $response->get_error_message());
+        // Log error with response body
+        $error_message = $response->get_error_message();
+        $response_body = wp_remote_retrieve_body($response);
+        gn_log_message_to_file('Error retrieving HTML content for product ' . $product_id . ' with barcode ' . $barcode . ': ' . $error_message);
+        gn_log_message_to_file('Response Body: ' . $response_body);
         return false;
     }
 
@@ -214,6 +215,7 @@ function gn_get_html_content($url, $barcode, $product_id) {
 
     return $html_content;
 }
+
 
 
 /**
