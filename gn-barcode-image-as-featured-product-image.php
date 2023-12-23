@@ -408,8 +408,8 @@ function gn_barcode_image_as_featured_product_image_log_page() {
 function delete_processed_id_meta_key() {
     global $wpdb;
     $wpdb->query("DELETE FROM $wpdb->postmeta WHERE meta_key = 'processed_id'");
-    //log the deleted meta keys
-    gn_log_message_to_file('Deleted processed_id meta keys');
+    //log how many meta keys were deleted
+    gn_log_message_to_file('Deleted ' . $wpdb->rows_affected . ' processed_id meta keys');
 }
 
 
