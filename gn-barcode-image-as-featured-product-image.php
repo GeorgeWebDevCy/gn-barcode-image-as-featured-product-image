@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.1.2
+ * @version       1.1.3
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find an image from a barcode and set it as the featured product image
- * Version:       1.1.2
+ * Version:       1.1.3
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -30,7 +30,7 @@ if (!defined('ABSPATH')) exit;
 define('GNBARCODEI_NAME', 'GN Barcode Image As Featured Product Image');
 
 // Plugin version
-define('GNBARCODEI_VERSION', '1.1.2');
+define('GNBARCODEI_VERSION', '1.1.3');
 
 // Plugin Root File
 define('GNBARCODEI_PLUGIN_FILE', __FILE__);
@@ -92,15 +92,17 @@ function gn_barcode_image_as_featured_product_image() {
     );
     $loop = new WP_Query($args);
     gn_log_message_to_file('Before the while loop');
+    
     while ($loop->have_posts()) : $loop->the_post();
-        // Check if the product already has a featured image
-        gn_log_message_to_file('Processing product ' . get_the_ID());
-        if (has_post_thumbnail(get_the_ID())) {
-            gn_log_message_to_file('Product ' . get_the_ID() . ' already has a featured image. Skipping product.');
-            set_post_meta(get_the_ID(), 'processed_id', '1');
-            continue; // Skip to the next product if a featured image is already set
-
+        // Check if the product already has a featured image and has not been processed
+        $processed = get_post_meta(get_the_ID(), 'processed_id', true);
+        if ($processed === '1' || has_post_thumbnail(get_the_ID())) {
+            gn_log_message_to_file('Product ' . get_the_ID() . ' already has a featured image or has been processed. Skipping product.');
+            continue; // Skip to the next product if a featured image is already set or the product has been processed
         }
+
+        // Mark the product as processed to avoid reprocessing
+        update_post_meta(get_the_ID(), 'processed_id', '1');
 
         // Get the barcode
         $barcode = get_post_meta(get_the_ID(), '_sku', true);
@@ -116,7 +118,7 @@ function gn_barcode_image_as_featured_product_image() {
             $barcode_html = gn_get_html_content('https://www.discogs.com/search?q=' . get_the_title(), $barcode, get_the_ID());
         }
 
-        //if both barcode search and image search by title fail, try then skipm the product
+        //if both barcode search and image search by title fail, try then skip the product
         if ($barcode_html === false || empty($barcode_html)) {
             gn_log_message_to_file('Barcode not found in Discogs for product ' . get_the_ID() . ' with barcode ' . $barcode . '. Image search by title also failed. Skipping product.');
             continue;
@@ -134,6 +136,7 @@ function gn_barcode_image_as_featured_product_image() {
     // Reset post data
     wp_reset_postdata();
 }
+
 
 // Add custom interval for every 5 minutes
 function gn_add_five_minute_interval($schedules) {
