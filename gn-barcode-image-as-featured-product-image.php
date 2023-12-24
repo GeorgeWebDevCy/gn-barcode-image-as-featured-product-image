@@ -43,6 +43,8 @@ define( 'GNBARCODEI_PLUGIN_DIR',	plugin_dir_path( GNBARCODEI_PLUGIN_FILE ) );
 // Plugin Folder URL
 define( 'GNBARCODEI_PLUGIN_URL',	plugin_dir_url( GNBARCODEI_PLUGIN_FILE ) );
 
+
+
 /**
  * Load the main class for the core functionality
  */
@@ -71,10 +73,6 @@ register_activation_hook(__FILE__, 'gn_product_image_remover_check_for_woocommer
 
 //autoload the composer packages
 require_once GNBARCODEI_PLUGIN_DIR . 'vendor/autoload.php';
-
-
-
-
 
 //add a settings page to admin for the plugin settings
 function gn_barcode_image_as_featured_product_image_settings_page() {
@@ -186,6 +184,100 @@ function gn_barcode_image_as_featured_product_image_settings_link( $links ) {
 $plugin = plugin_basename( __FILE__ );
 add_filter( "plugin_action_links_$plugin", 'gn_barcode_image_as_featured_product_image_settings_link' );
 
+function gn_barcode_image_as_featured_product_image_query_discogsapi($querydiscogs)
+{
+
+
+	
+$options = get_option( 'gn_barcode_image_as_featured_product_image' );
+$consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
+$consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
+$requestTokenUrl = $options['gn_barcode_image_as_featured_product_image_request_token_url'];
+$authorizeUrl = $options['gn_barcode_image_as_featured_product_image_authorize_url'];
+$accessTokenUrl = $options['gn_barcode_image_as_featured_product_image_access_token_url'];
+
+//set up throttling for the api calls
+$handler = \GuzzleHttp\HandlerStack::create();
+$throttle = new Discogs\Subscriber\ThrottleSubscriber();
+$handler->push(\GuzzleHttp\Middleware::retry($throttle->decider(), $throttle->delay()));
+
+//get new token
+$storage = new Session();
+$credentials = new Credentials(
+	$consumerKey,
+	$consumerSecret,
+	$currentUri->getAbsoluteUri()
+);
+$serviceFactory = new \OAuth\ServiceFactory();
+$bbService = $serviceFactory->createService('Discogs', $credentials, $storage);
+$token = $bbService->requestRequestToken();
+$url = $bbService->getAuthorizationUri(array('oauth_token' => $token->getRequestToken()));
+
+//get the access token
+$token = $storage->retrieveAccessToken('Discogs');	
+$bbService->requestAccessToken(
+	$_GET['oauth_token'],
+	$_GET['oauth_verifier'],
+	$token->getRequestTokenSecret()
+);
+
+
+
+
+
+$oauth = new GuzzleHttp\Subscriber\Oauth\Oauth1([
+    'consumer_key'    => $consumerKey, // from Discogs developer page
+    'consumer_secret' => $consumerSecret, // from Discogs developer page
+    'token'           => $token['oauth_token'], // get this using a OAuth library
+    'token_secret'    => $token['oauth_token_secret'] // get this using a OAuth library
+]);
+$handler = GuzzleHttp\HandlerStack::create();
+$handler->push($oauth);
+$client = Discogs\ClientFactory::factory([
+    'handler' => $handler,
+    'auth' => 'oauth'
+]);
+
+return $oauth;
+}
+//create a submenu in my plugin meny to query the discogs api and show the results uing the gn_barcode_image_as_featured_product_image_query_discogsapi($querydiscogs) function
+function gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page() {
+	add_submenu_page(
+		'gn-barcode-image-as-featured-product-image',
+		'Query Discogs API',
+		'Query Discogs API',
+		'manage_options',
+		'gn-barcode-image-as-featured-product-image-query-discogsapi',
+		'gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page_callback' );
+}
+add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page' );
+
+
+
+function gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page_callback() {
+    ?>
+    <div class="wrap">
+        <h2>Query Discogs API</h2>
+        <form method="post" action="">
+            <label for="barcode">Enter Barcode:</label>
+            <input type="text" id="barcode" name="barcode" required>
+            <input type="submit" class="button-primary" value="Query Discogs API">
+        </form>
+        <?php
+        // Check if the form is submitted
+        if (isset($_POST['barcode'])) {
+            $barcode = sanitize_text_field($_POST['barcode']);
+            // Call the function to query Discogs API
+            $result = gn_barcode_image_as_featured_product_image_query_discogsapi($barcode);
+			// Display the result
+			echo '<pre>';
+			print_r($result);
+			echo '</pre>';
+        }
+        ?>
+    </div>
+    <?php
+}
 
 
 

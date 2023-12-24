@@ -725,6 +725,61 @@
             "install-path": "../guzzlehttp/uri-template"
         },
         {
+            "name": "kriswallsmith/buzz",
+            "version": "v0.15",
+            "version_normalized": "0.15.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/kriswallsmith/Buzz.git",
+                "reference": "d4041666c3ffb379af02a92dabe81c904b35fab8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/kriswallsmith/Buzz/zipball/d4041666c3ffb379af02a92dabe81c904b35fab8",
+                "reference": "d4041666c3ffb379af02a92dabe81c904b35fab8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "3.7.*"
+            },
+            "suggest": {
+                "ext-curl": "*"
+            },
+            "time": "2015-06-25T17:26:56+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-0": {
+                    "Buzz": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Kris Wallsmith",
+                    "email": "kris.wallsmith@gmail.com",
+                    "homepage": "http://kriswallsmith.net/"
+                }
+            ],
+            "description": "Lightweight HTTP client",
+            "homepage": "https://github.com/kriswallsmith/Buzz",
+            "keywords": [
+                "curl",
+                "http client"
+            ],
+            "support": {
+                "issues": "https://github.com/kriswallsmith/Buzz/issues",
+                "source": "https://github.com/kriswallsmith/Buzz/tree/v0.15"
+            },
+            "install-path": "../kriswallsmith/buzz"
+        },
+        {
             "name": "psr/http-client",
             "version": "1.0.3",
             "version_normalized": "1.0.3.0",
@@ -939,6 +994,55 @@
                 "source": "https://github.com/ralouphie/getallheaders/tree/develop"
             },
             "install-path": "../ralouphie/getallheaders"
+        },
+        {
+            "name": "ricbra/php-discogs-api",
+            "version": "v0.6",
+            "version_normalized": "0.6.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ricbra/php-discogs-api.git",
+                "reference": "43329a0e5e080a52068fc55d9115bfd49e379031"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ricbra/php-discogs-api/zipball/43329a0e5e080a52068fc55d9115bfd49e379031",
+                "reference": "43329a0e5e080a52068fc55d9115bfd49e379031",
+                "shasum": ""
+            },
+            "require": {
+                "kriswallsmith/buzz": ">=0.5",
+                "php": ">=5.3.0"
+            },
+            "time": "2014-05-09T19:37:25+00:00",
+            "type": "library",
+            "installation-source": "dist",
+            "autoload": {
+                "psr-0": {
+                    "Discogs": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Richard van den Brand",
+                    "email": "richard@vandenbrand.org"
+                }
+            ],
+            "description": "The Discogs API makes it easy for developers to communicate with the Discogs platform",
+            "keywords": [
+                "api",
+                "discogs"
+            ],
+            "support": {
+                "issues": "https://github.com/ricbra/php-discogs-api/issues",
+                "source": "https://github.com/ricbra/php-discogs-api/tree/master"
+            },
+            "abandoned": true,
+            "install-path": "../ricbra/php-discogs-api"
         },
         {
             "name": "symfony/deprecation-contracts",

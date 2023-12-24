@@ -42,8 +42,8 @@ class ComposerStaticInit2065d5a82f1215ef0df3a96ae1069579
         ),
         'Psr\\Http\\Message\\' => 
         array (
-            0 => __DIR__ . '/..' . '/psr/http-message/src',
-            1 => __DIR__ . '/..' . '/psr/http-factory/src',
+            0 => __DIR__ . '/..' . '/psr/http-factory/src',
+            1 => __DIR__ . '/..' . '/psr/http-message/src',
         ),
         'Psr\\Http\\Client\\' => 
         array (
@@ -85,6 +85,14 @@ class ComposerStaticInit2065d5a82f1215ef0df3a96ae1069579
             'Discogs' => 
             array (
                 0 => __DIR__ . '/..' . '/calliostro/php-discogs-api/lib',
+                1 => __DIR__ . '/..' . '/ricbra/php-discogs-api/lib',
+            ),
+        ),
+        'B' => 
+        array (
+            'Buzz' => 
+            array (
+                0 => __DIR__ . '/..' . '/kriswallsmith/buzz/lib',
             ),
         ),
     );

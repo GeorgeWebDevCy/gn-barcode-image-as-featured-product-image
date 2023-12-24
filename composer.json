@@ -1,5 +1,6 @@
 {
     "require": {
-        "calliostro/php-discogs-api": "^2.0"
+        "calliostro/php-discogs-api": "^2.0",
+        "ricbra/php-discogs-api": "^0.6.0"
     }
 }
