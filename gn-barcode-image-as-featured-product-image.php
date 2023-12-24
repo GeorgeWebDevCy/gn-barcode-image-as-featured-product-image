@@ -61,6 +61,34 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
 $myUpdateChecker->setBranch('main');
 
 /**
+ * function gn_check_woocommerce_installed */
+function gn_check_woocommerce_installed() {
+    if ( ! class_exists( 'WooCommerce' ) ) {
+        add_action( 'admin_notices', 'gn_barcode_image_as_featured_product_image_admin_notice' );
+    }
+}
+add_action( 'admin_init', 'gn_check_woocommerce_installed' );
+
+/**
+ * Check if WooCommerce is activated
+ */
+if ( ! function_exists( 'is_woocommerce_activated' ) ) {
+    function is_woocommerce_activated() {
+        return class_exists( 'WooCommerce' );
+    }
+}
+
+/**
+ * Check if WooCommerce is activated and display admin notice if not
+ */
+function gn_check_woocommerce_installed() {
+    if ( ! is_woocommerce_activated() ) {
+        add_action( 'admin_notices', 'gn_barcode_image_as_featured_product_image_admin_notice' );
+    }
+}
+add_action( 'admin_init', 'gn_check_woocommerce_installed' );
+
+/**
  * The main function to load the only instance
  * of our master class.
  *
