@@ -60,25 +60,14 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
 );
 $myUpdateChecker->setBranch('main');
 
-
-/**
- * Check if WooCommerce is activated
- */
-if ( ! function_exists( 'is_woocommerce_activated' ) ) {
-    function is_woocommerce_activated() {
-        return class_exists( 'WooCommerce' );
+// Check if WooCommerce is active
+function gn_product_image_remover_check_for_woocommerce() {
+    if (!class_exists('woocommerce')) {
+        deactivate_plugins(plugin_basename(__FILE__));
+        wp_die('Sorry, but this plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.');
     }
 }
-
-/**
- * Check if WooCommerce is activated and display admin notice if not
- */
-function gn_check_woocommerce_installed() {
-    if ( ! is_woocommerce_activated() ) {
-        add_action( 'admin_notices', 'gn_barcode_image_as_featured_product_image_admin_notice' );
-    }
-}
-add_action( 'admin_init', 'gn_check_woocommerce_installed' );
+register_activation_hook(__FILE__, 'gn_product_image_remover_check_for_woocommerce');
 
 /**
  * The main function to load the only instance
