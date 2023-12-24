@@ -48,6 +48,18 @@ define( 'GNBARCODEI_PLUGIN_URL',	plugin_dir_url( GNBARCODEI_PLUGIN_FILE ) );
  */
 require_once GNBARCODEI_PLUGIN_DIR . 'core/class-gn-barcode-image-as-featured-product-image.php';
 
+/* 
+* Github plugin updater code */
+require 'plugin-update-checker/plugin-update-checker.php';
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$myUpdateChecker = PucFactory::buildUpdateChecker(
+    'https://github.com/GeorgeWebDevCy/gn-barcode-image-as-featured-product-image',
+    __FILE__,
+    'gn-barcode-image-as-featured-product-image'
+);
+$myUpdateChecker->setBranch('main');
+
 /**
  * The main function to load the only instance
  * of our master class.
