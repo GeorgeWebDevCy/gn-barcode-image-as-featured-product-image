@@ -60,14 +60,6 @@ $myUpdateChecker = PucFactory::buildUpdateChecker(
 );
 $myUpdateChecker->setBranch('main');
 
-/**
- * function gn_check_woocommerce_installed */
-function gn_check_woocommerce_installed() {
-    if ( ! class_exists( 'WooCommerce' ) ) {
-        add_action( 'admin_notices', 'gn_barcode_image_as_featured_product_image_admin_notice' );
-    }
-}
-add_action( 'admin_init', 'gn_check_woocommerce_installed' );
 
 /**
  * Check if WooCommerce is activated
