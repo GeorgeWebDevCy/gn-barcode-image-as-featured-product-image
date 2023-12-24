@@ -1,13 +1,13 @@
-=== GN Barcode Image As Featured Product Image === 
+=== GN Barcode Image As Featured Product Image ===
 Author URI: https://www.georgenicolaou.me/
 Plugin URI: https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
 Donate link: 
-Contributors: orionaselite 
+Contributors: 
 Tags: 
 Requires at least: 
 Tested up to: 
 Requires PHP: 
-Stable tag: 1.1.15
+Stable tag: 1.0.0
 License: GPLv2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

@@ -43,7 +43,7 @@ class Gn_Barcode_Image_As_Featured_Product_Image_Run{
 	private function add_hooks(){
 	
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_backend_scripts_and_styles' ), 20 );
-		//add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_menu_items' ), 100, 1 );
+		add_action( 'admin_bar_menu', array( $this, 'add_admin_bar_menu_items' ), 100, 1 );
 	
 	}
 
