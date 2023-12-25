@@ -196,34 +196,12 @@ $requestTokenUrl = $options['gn_barcode_image_as_featured_product_image_request_
 $authorizeUrl = $options['gn_barcode_image_as_featured_product_image_authorize_url'];
 $accessTokenUrl = $options['gn_barcode_image_as_featured_product_image_access_token_url'];
 
-//set up throttling for the api calls
+//get the oauth token
+
+// Create a new instance of the client
 $handler = \GuzzleHttp\HandlerStack::create();
 $throttle = new Discogs\Subscriber\ThrottleSubscriber();
 $handler->push(\GuzzleHttp\Middleware::retry($throttle->decider(), $throttle->delay()));
-
-//get new token
-$storage = new Session();
-$credentials = new Credentials(
-	$consumerKey,
-	$consumerSecret,
-	$currentUri->getAbsoluteUri()
-);
-$serviceFactory = new \OAuth\ServiceFactory();
-$bbService = $serviceFactory->createService('Discogs', $credentials, $storage);
-$token = $bbService->requestRequestToken();
-$url = $bbService->getAuthorizationUri(array('oauth_token' => $token->getRequestToken()));
-
-//get the access token
-$token = $storage->retrieveAccessToken('Discogs');	
-$bbService->requestAccessToken(
-	$_GET['oauth_token'],
-	$_GET['oauth_verifier'],
-	$token->getRequestTokenSecret()
-);
-
-
-
-
 
 $oauth = new GuzzleHttp\Subscriber\Oauth\Oauth1([
     'consumer_key'    => $consumerKey, // from Discogs developer page

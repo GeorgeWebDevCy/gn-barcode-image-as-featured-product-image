@@ -6,6 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'Discogs' => array($vendorDir . '/calliostro/php-discogs-api/lib', $vendorDir . '/ricbra/php-discogs-api/lib'),
-    'Buzz' => array($vendorDir . '/kriswallsmith/buzz/lib'),
+    'Discogs' => array($vendorDir . '/calliostro/php-discogs-api/lib'),
 );
