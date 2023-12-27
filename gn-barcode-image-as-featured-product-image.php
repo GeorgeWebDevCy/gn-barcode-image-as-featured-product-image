@@ -70,6 +70,40 @@ function gn_barcode_image_as_featured_product_image_check_for_woocommerce() {
 }
 register_activation_hook(__FILE__, 'gn_product_image_remover_check_for_woocommerce');
 
+function save_image_to_upload_dir($image_data) {
+    $upload_dir = wp_upload_dir();
+    $file_name = 'data_image_' . md5($image_data) . '.jpg';
+    $file = $upload_dir['path'] . '/' . $file_name;
+    file_put_contents($file, $image_data);
+    return $file;
+}
+
+/**
+ * Set featured image from file
+ *
+ * @param string $file
+ * @param int $product_id
+ * @param string $barcode
+ * @param string $mime_type
+ */
+function set_featured_image_from_file($file, $product_id, $barcode, $mime_type) {
+    $attachment = array(
+        'post_mime_type' => $mime_type,
+        'post_title'     => sanitize_file_name(basename($file)),
+        'post_content'   => '',
+        'post_status'    => 'inherit',
+    );
+
+    $attach_id = wp_insert_attachment($attachment, $file, $product_id);
+
+    require_once(ABSPATH . 'wp-admin/includes/image.php');
+    $attach_data = wp_generate_attachment_metadata($attach_id, $file);
+    wp_update_attachment_metadata($attach_id, $attach_data);
+
+    set_post_thumbnail($product_id, $attach_id);
+    //gn_log_message_to_file('Set featured image for product ' . $product_id . ' with barcode ' . $barcode . ' to ' . $file);
+}
+
 
 //autoload the composer packages
 require_once GNBARCODEI_PLUGIN_DIR . 'vendor/autoload.php';
@@ -136,6 +170,8 @@ function gn_barcode_image_as_featured_product_image_register_settings() {
 	add_settings_field( 'gn_barcode_image_as_featured_product_image_request_token_url', 'Request Token URL', 'gn_barcode_image_as_featured_product_image_request_token_url_callback', 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image_settings' );
 	add_settings_field( 'gn_barcode_image_as_featured_product_image_authorize_url', 'Authorize URL', 'gn_barcode_image_as_featured_product_image_authorize_url_callback', 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image_settings' );
 	add_settings_field( 'gn_barcode_image_as_featured_product_image_access_token_url', 'Access Token URL', 'gn_barcode_image_as_featured_product_image_access_token_url_callback', 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image_settings' );
+    add_settings_field( 'gn_barcode_image_as_featured_product_image_user_agent', 'User Agent', 'gn_barcode_image_as_featured_product_image_user_agent_callback', 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image_settings' );
+    add_settings_field( 'gn_barcode_image_as_featured_product_image_your_domain', 'Your Domain', 'gn_barcode_image_as_featured_product_image_your_domain_callback', 'gn_barcode_image_as_featured_product_image', 'gn_barcode_image_as_featured_product_image_settings' );
 }
 $options = get_option( 'gn_barcode_image_as_featured_product_image' );
 if ( ! empty( $options ) ) {
@@ -144,6 +180,11 @@ if ( ! empty( $options ) ) {
 	$gn_barcode_image_as_featured_product_image_request_token_url = $options['gn_barcode_image_as_featured_product_image_request_token_url'];
 	$gn_barcode_image_as_featured_product_image_authorize_url = $options['gn_barcode_image_as_featured_product_image_authorize_url'];
 	$gn_barcode_image_as_featured_product_image_access_token_url = $options['gn_barcode_image_as_featured_product_image_access_token_url'];
+    $gn_barcode_image_as_featured_product_image_user_agent = $options['gn_barcode_image_as_featured_product_image_user_agent'];
+    $gn_barcode_image_as_featured_product_image_your_domain = $options['gn_barcode_image_as_featured_product_image_your_domain'];
+
+
+    
 }
 
 //set the default values for the settings
@@ -153,6 +194,8 @@ if ( empty( $options ) ) {
 	$gn_barcode_image_as_featured_product_image_request_token_url = 'https://api.discogs.com/oauth/request_token';
 	$gn_barcode_image_as_featured_product_image_authorize_url = 'https://www.discogs.com/oauth/authorize';
 	$gn_barcode_image_as_featured_product_image_access_token_url = 'https://api.discogs.com/oauth/access_token';
+    $gn_barcode_image_as_featured_product_image_user_agent = 'All records Dev/1.0 +https://dev.georgenicolaou.me';
+    $gn_barcode_image_as_featured_product_image_your_domain = 'https://dev.georgenicolaou.me';
 }
 
 
@@ -182,6 +225,19 @@ function gn_barcode_image_as_featured_product_image_access_token_url_callback() 
 	echo "<input type='text' name='gn_barcode_image_as_featured_product_image[gn_barcode_image_as_featured_product_image_access_token_url]' value='" . $options['gn_barcode_image_as_featured_product_image_access_token_url'] . "' />";
 }
 
+function gn_barcode_image_as_featured_product_image_user_agent_callback() {
+    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
+    echo "<input type='text' name='gn_barcode_image_as_featured_product_image[gn_barcode_image_as_featured_product_image_user_agent]' value='" . $options['gn_barcode_image_as_featured_product_image_user_agent'] . "' />";
+}
+
+//yout domain callback
+function gn_barcode_image_as_featured_product_image_your_domain_callback() {
+    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
+    echo "<input type='text' name='gn_barcode_image_as_featured_product_image[gn_barcode_image_as_featured_product_image_your_domain]' value='" . $options['gn_barcode_image_as_featured_product_image_your_domain'] . "' />";
+}
+
+
+
 //add the settings link to the plugins page
 function gn_barcode_image_as_featured_product_image_settings_link( $links ) {
 	$settings_link = '<a href="admin.php?page=gn-barcode-image-as-featured-product-image">' . __( 'Settings' ) . '</a>';
@@ -191,249 +247,175 @@ function gn_barcode_image_as_featured_product_image_settings_link( $links ) {
 $plugin = plugin_basename( __FILE__ );
 add_filter( "plugin_action_links_$plugin", 'gn_barcode_image_as_featured_product_image_settings_link' );
 
-//create a submenu in my plugin menu that will get a token from discogs api and save it in the database for later use in the gn_barcode_image_as_featured_product_image_query_discogsapi($querydiscogs) function
-function gn_barcode_image_as_featured_product_image_get_token_submenu_page() {
-	add_submenu_page(
-		'gn-barcode-image-as-featured-product-image',
-		'Get Token',
-		'Get Token',
-		'manage_options',
-		'gn-barcode-image-as-featured-product-image-get-token',
-		'gn_barcode_image_as_featured_product_image_get_token_submenu_page_callback' );
+
+
+//create a submenu page for the plugin where I can see the output of the gn_barcode_image_as_featured_product_image_query_discogsapi function
+function gn_barcode_image_as_featured_product_image_submenu_page() {
+    add_submenu_page(
+        'gn-barcode-image-as-featured-product-image',
+        'GN Barcode Image As Featured Product Image',
+        'GN Barcode Image Logger',
+        'manage_options',
+        'gn-barcode-image-as-featured-product-image-submenu-page',
+        'gn_barcode_image_as_featured_product_image_submenu_page_callback' );
 }
-add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_get_token_submenu_page' );
+add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_submenu_page' );
 
-function gn_barcode_image_as_featured_product_image_get_token_submenu_page_callback() {
-    ?>
-    <div class="wrap">
-        <h2>Get Token</h2>
-        <form method="post" action="">
-            <input type="submit" class="button-primary" name="submit" value="Get Token">
-        </form>
-        <?php
-        // Check if the form is submitted
-        if (isset($_POST['submit'])) {
-            // Call the function to initiate the OAuth process
-            gn_barcode_image_as_featured_product_image_get_token();
-        }
-        ?>
-    </div>
-    <?php
-}
-
-add_action('admin_init', 'gn_barcode_image_as_featured_product_image_handle_callback');
-
-
-function gn_barcode_image_as_featured_product_image_get_token() {
-    $options = get_option('gn_barcode_image_as_featured_product_image');
+//callback function for the submenu page
+ function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
+    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
     $consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
     $consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
     $requestTokenUrl = $options['gn_barcode_image_as_featured_product_image_request_token_url'];
     $authorizeUrl = $options['gn_barcode_image_as_featured_product_image_authorize_url'];
     $accessTokenUrl = $options['gn_barcode_image_as_featured_product_image_access_token_url'];
+    $oauthToken = $options['gn_barcode_image_as_featured_product_image_oauth_token'];
+    $oauthTokenSecret = $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'];
+    $your_domain = $options['gn_barcode_image_as_featured_product_image_your_domain'];
+    //add use user agent option in the database
+    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
+    $user_agent = $options['gn_barcode_image_as_featured_product_image_user_agent'];
+    $your_domain = $options['gn_barcode_image_as_featured_product_image_your_domain'];
 
+    //show current settings
+    echo "<h2>Current Settings</h2>";
+    echo "<p>Consumer Key: " . $consumerKey . "</p>";
+    echo "<p>Consumer Secret: " . $consumerSecret . "</p>";
+    echo "<p>Request Token URL: " . $requestTokenUrl . "</p>";
+    echo "<p>Authorize URL: " . $authorizeUrl . "</p>";
+    echo "<p>Access Token URL: " . $accessTokenUrl . "</p>";
+    echo "<p>OAuth Token: " . $oauthToken . "</p>";
+    echo "<p>OAuth Token Secret: " . $oauthTokenSecret . "</p>";
+    echo "<p>User Agent: " . $user_agent . "</p>";
+    echo "<p>Your Domain: " . $your_domain . "</p>";
+
+    
+    //since the oauth token and oauth token secret are not saved in the database, I need to get them using the oauthsimple library
     $oauthObject = new OAuthSimple();
-    $scope = 'http://api.discogs.com';
+    $scope = 'https://api.discogs.com';
 
     // Initialize the output in case we get stuck in the first step.
-    $output = 'Authorizing...';
+$output = 'Authorizing...';
 
-    // Fill in your API key/consumer key you received when you registered your
-    // application with Discogs.
-    $signatures = array('consumer_key' => $consumerKey, 'shared_secret' => $consumerSecret);
+// Fill in your API key/consumer key you received when you registered your 
+// application with Discogs.
+$signatures = array( 'consumer_key'     => $consumerKey,
+                     'shared_secret'    => $consumerSecret);
 
-    // Check if verifier exists.  If not, get a request token
-    if (!isset($_GET['oauth_verifier'])) {
-        // To get a Request Token, we make a request to the OAuthGetRequestToken endpoint,
-        // submitting the scope of the access we need (api.discogs.com)
-        // and also tell Discogs where to redirect once authorization is submitted
-        $result = $oauthObject->sign(array(
-            'path' => 'https://api.discogs.com/oauth/request_token',
-            'parameters' => array(
-                'scope' => $scope,
-                'oauth_callback' => 'https://dev.georgenicolaou.me/gn-barcode-image-as-featured-product-image-get-token'	// must be the same as in the application settings
-            ),
-            'signatures' => $signatures
-        ));
+// Check if verifier exists.  If not, get a request token
+if (!isset($_GET['oauth_verifier'])) {
+    // To get a Request Token, we make a request to the OAuthGetRequestToken endpoint,
+    // submitting the scope of the access we need (api.discogs.com)
+	  // and also tell Discogs where to redirect once authorization is submitted
+    $result = $oauthObject->sign(array(
+        'path'      =>$requestTokenUrl,
+        'parameters'=> array(
+            'scope'         => $scope,
+            'oauth_callback'=> $your_domain . '/wp-admin/admin.php?page=gn-barcode-image-as-featured-product-image-submenu-page'),
+        'signatures'=> $signatures));
 
-        // The above object generates a simple URL that includes a signature, the
-        // needed parameters, and the web page that will handle our request.
-        // Using the cUrl library, we send a GET request to the signed URL
-        // then add the response into a string variable ($r)
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_USERAGENT, 'All records Dev/0.1 +https://dev.georgenicolaou.me');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
+    // The above object generates a simple URL that includes a signature, the 
+    // needed parameters, and the web page that will handle our request.
+    // Using the cUrl libary, we send a GET request to the signed URL
+	  // then add the response into a string variable ($r)
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_USERAGENT, 'YOUR_USER_AGENT/0.1 +http://yourdomain.com');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
+    
+    $r = curl_exec($ch);
+    curl_close($ch);
 
-        $r = curl_exec($ch);
-
-        // Then we parse the string for the request token and the matching token secret.
-        parse_str($r, $returned_items);
-
-        if (isset($returned_items['oauth_token'], $returned_items['oauth_token_secret'])) {
-            $request_token = $returned_items['oauth_token'];
-            $request_token_secret = $returned_items['oauth_token_secret'];
-
-            // We store the token and secret in a cookie for later when authorization is complete
-            setcookie("oauth_token_secret", $request_token_secret, time() + 3600);
-
-            // Next we generate a URL for an authorization request, then redirect to that URL
-            // so the user can authorize our request.
-            // The user could deny the request, so we should add some code later to handle that situation
-            $result = $oauthObject->sign(array(
-                'path' => 'http://www.discogs.com/oauth/authorize',
-                'parameters' => array(
-                    'oauth_token' => $request_token
-                ),
-                'signatures' => $signatures
-            ));
-
-            // Here is where we redirect
-            header("Location:$result[signed_url]");
-            exit;
-        } else {
-            // Handle the case where the expected values are not present in the response
-            wp_die('Error obtaining request token.');
-        }
-    } else {
-        // If we have an oauth_verifier, fetch the cookie and amend our signature array with the request
-        // token and secret.
-        $signatures['oauth_secret'] = $_COOKIE['oauth_token_secret'];
-        $signatures['oauth_token'] = $_GET['oauth_token'];
-
-        // Build the request-URL
-        $result = $oauthObject->sign(array(
-            'path' => 'http://api.discogs.com/oauth/access_token',
-            'parameters' => array(
-                'oauth_verifier' => $_GET['oauth_verifier'],
-                'oauth_token' => $_GET['oauth_token']
-            ),
-            'signatures' => $signatures
-        ));
-
-        // ... and get the web page and store it as a string again.
-        $ch = curl_init();
-        //Set the User-Agent Identifier
-        curl_setopt($ch, CURLOPT_USERAGENT, 'All records Dev/0.1 +https://dev.georgenicolaou.me');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
-        $r = curl_exec($ch);
-
-        // parse the string to get your access token
-        parse_str($r, $returned_items);
-
-        if (isset($returned_items['oauth_token'], $returned_items['oauth_token_secret'])) {
-            $access_token = $returned_items['oauth_token'];
-            $access_token_secret = $returned_items['oauth_token_secret'];
-
-            // We can use this long-term access token to request Discogs API data,
-            // for example, the identity of the authenticated user.
-            // All Discogs API data requests will have to be signed just as before,
-            // but we can now bypass the authorization process and use the long-term
-            // access token you hopefully store somewhere permanently.
-            $oauth_props = array('oauth_token' => $access_token, 'oauth_secret' => $access_token_secret);
-			wp_die();
-
-            //get oauth token and secret from cookie and save them in the database
-            $options = get_option('gn_barcode_image_as_featured_product_image');
-            $options['gn_barcode_image_as_featured_product_image_oauth_token'] = $access_token;
-            $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'] = $access_token_secret;
-            update_option('gn_barcode_image_as_featured_product_image', $options);
-        } else {
-            // Handle the case where the expected values are not present in the response
-            wp_die('Error obtaining access token.');
-        }
-    }
-}
-
-function gn_barcode_image_as_featured_product_image_handle_callback() {
-echo 'in callback';
-}
-
-function gn_barcode_image_as_featured_product_image_query_discogsapi($querydiscogs)
-{
-$options = get_option( 'gn_barcode_image_as_featured_product_image' );
-$consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
-$consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
-$requestTokenUrl = $options['gn_barcode_image_as_featured_product_image_request_token_url'];
-$authorizeUrl = $options['gn_barcode_image_as_featured_product_image_authorize_url'];
-$accessTokenUrl = $options['gn_barcode_image_as_featured_product_image_access_token_url'];
-$oauthToken = $options['gn_barcode_image_as_featured_product_image_oauth_token'];
-$oauthTokenSecret = $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'];
-
-
-
-// Create a new instance of the client
-$handler = \GuzzleHttp\HandlerStack::create();
-$throttle = new Discogs\Subscriber\ThrottleSubscriber();
-$handler->push(\GuzzleHttp\Middleware::retry($throttle->decider(), $throttle->delay()));
-
-$oauth = new GuzzleHttp\Subscriber\Oauth\Oauth1([
-    'consumer_key'    => $consumerKey, // from Discogs developer page
-    'consumer_secret' => $consumerSecret, // from Discogs developer page
-    'token'           => $oauthToken, // get this using a OAuth library
-    'token_secret'    => $oauthTokenSecret // get this using a OAuth library
-]);
-$handler = GuzzleHttp\HandlerStack::create();
-$handler->push($oauth);
-$client = Discogs\ClientFactory::factory([
-    'handler' => $handler,
-    'auth' => 'oauth'
-]);
-
-
-return $response;
-}
-//create a submenu in my plugin meny to query the discogs api and show the results uing the gn_barcode_image_as_featured_product_image_query_discogsapi($querydiscogs) function
-function gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page() {
-	add_submenu_page(
-		'gn-barcode-image-as-featured-product-image',
-		'Query Discogs API',
-		'Query Discogs API',
-		'manage_options',
-		'gn-barcode-image-as-featured-product-image-query-discogsapi',
-		'gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page_callback' );
-}
-add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page' );
-
-
-
-function gn_barcode_image_as_featured_product_image_query_discogsapi_submenu_page_callback() {
-    ?>
-    <div class="wrap">
-        <h2>Query Discogs API</h2>
-		<?php gn_barcode_image_as_featured_product_image_show_current_tokens(); ?>
-        <form method="post" action="">
-            <label for="barcode">Enter Barcode:</label>
-            <input type="text" id="barcode" name="barcode" required>
-            <input type="submit" class="button-primary" value="Query Discogs API">
-        </form>
-        <?php
-        // Check if the form is submitted
-        if (isset($_POST['barcode'])) {
-            $barcode = sanitize_text_field($_POST['barcode']);
-            // Call the function to query Discogs API
-            $result = gn_barcode_image_as_featured_product_image_query_discogsapi($barcode);
-			// Display the result
-			echo '<pre>';
-			print_r($result);
-			echo '</pre>';
-		
+    // Then we parse the string for the request token and the matching token secret. 
+    parse_str($r, $returned_items);
+    $request_token = $returned_items['oauth_token'];
+    $request_token_secret = $returned_items['oauth_token_secret'];
 	
-        }
-        ?>
-    </div>
-    <?php
-}
+    // We store the token and secret in a cookie for later when authorization is complete
+    setcookie("oauth_token_secret", $request_token_secret, time()+3600);
+    
+    // Next we generate a URL for an authorization request, then redirect to that URL
+    // so the user can authorize our request.  
+    // The user could deny the request, so we should add some code later to handle that situation
+    $result = $oauthObject->sign(array(
+        'path'      => $authorizeUrl,
+        'parameters'=> array(
+            'oauth_token' => $request_token),
+        'signatures'=> $signatures));
 
-function gn_barcode_image_as_featured_product_image_show_current_tokens()
-{
-	$options = get_option( 'gn_barcode_image_as_featured_product_image' );
-	$oauthToken = isset($options['gn_barcode_image_as_featured_product_image_oauth_token']) ? $options['gn_barcode_image_as_featured_product_image_oauth_token'] : '';
-	$oauthTokenSecret = isset($options['gn_barcode_image_as_featured_product_image_oauth_token_secret']) ? $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'] : '';
-	echo '<p>Current OAuth Token: ' . $oauthToken . '</p>';
-	echo '<p>Current OAuth Token Secret: ' . $oauthTokenSecret . '</p>';
+    // Here is where we redirect
+    header("Location:$result[signed_url]");
+    exit;
 }
+else {
+    // If we have a oauth_verifier, fetch the cookie and amend our signature array with the request
+    // token and secret.
+    $signatures['oauth_secret'] = $_COOKIE['oauth_token_secret'];
+    $signatures['oauth_token'] = $_GET['oauth_token'];
+    
+    // Build the request-URL
+    $result = $oauthObject->sign(array(
+        'path'      => $accessTokenUrl,
+        'parameters'=> array(
+            'oauth_verifier' => $_GET['oauth_verifier'],
+            'oauth_token'    => $_GET['oauth_token']),
+        'signatures'=> $signatures));
+
+    // ... and get the web page and store it as a string again.
+    $ch = curl_init();
+	  //Set the User-Agent Identifier
+    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
+    $r = curl_exec($ch);
+
+    // parse the string to get you access token
+    parse_str($r, $returned_items);        
+    $access_token = $returned_items['oauth_token'];
+    $access_token_secret = $returned_items['oauth_token_secret'];
+    
+    // We can use this long-term access token to request Discogs API data,
+    // for example, the identity of the authenticated user. 
+    // All Discogs API data requests will have to be signed just as before,
+    // but we can now bypass the authorization process and use the long-term
+    // access token you hopefully store somewhere permanently.
+    $oauth_props = array( 'oauth_token'     => $access_token,
+                     'oauth_secret'    => $access_token_secret);
+
+    // reset the oauth object
+    $oauthObject->reset();
+    
+    // rebuild it with the URL of the resource you want to access and the token/secret
+    $params['path'] = "$scope/database/search";
+    $params['signatures'] = $oauth_props;
+    
+    // add optional parameters as needed  
+    // For example: when using the search endpoint, and/or when passing pagination options
+    $params['parameters'] = 'q=nevermind&artist=nirvana&per_page=3&page=1';
+    
+    $result = $oauthObject->sign($params);
+
+    // Now that we have our signed URL, we can make one more call to the API
+    // which will grant us access to an authenticated resource
+    // such as http://api.discogs.com/oauth/identity
+
+    $url = $result['signed_url'];
+	
+    curl_setopt($ch, CURLOPT_USERAGENT, 'YOUR_USER_AGENT/0.1 +http://yourdomain.com');
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+    //Execute the curl session
+    $output = curl_exec($ch);
+	
+    curl_close($ch);
+	
+    // print the JSON output to the page
+    echo $output;
+}        
+ }
+
+
 
 /**
  * The main function to load the only instance
