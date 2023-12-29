@@ -249,6 +249,8 @@ add_filter( "plugin_action_links_$plugin", 'gn_barcode_image_as_featured_product
 
 
 
+
+
 //create a submenu page for the plugin where I can see the output of the gn_barcode_image_as_featured_product_image_query_discogsapi function
 function gn_barcode_image_as_featured_product_image_submenu_page() {
     add_submenu_page(
@@ -262,7 +264,7 @@ function gn_barcode_image_as_featured_product_image_submenu_page() {
 add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_submenu_page' );
 
 //callback function for the submenu page
- function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
+function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
     $options = get_option( 'gn_barcode_image_as_featured_product_image' );
     $consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
     $consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
@@ -412,9 +414,81 @@ else {
 	
     // print the JSON output to the page
     echo $output;
+    //output image from api on page
+    $output = json_decode($output);
+    $image_url = $output->results[0]->cover_image;
+    echo "<br><img src='" . $image_url . "' />";
+
 }        
  }
 
+// Function to get the ID of the placeholder image
+function wc_placeholder_img_id() {
+    $placeholder = wc_placeholder_img();
+    $placeholder_id = attachment_url_to_postid($placeholder);
+    return $placeholder_id;
+}
+
+
+
+/**
+ * function to check if the product has a featured image. If it does, return true, else return false also if placeholder image is set return false
+ 
+* @param int $product_id
+* @return bool
+ */
+function gn_barcode_image_as_featured_product_image_check_if_product_has_featured_image($product_id) {
+    $product = wc_get_product($product_id);
+    $featured_image_id = $product->get_image_id();
+    $placeholder_image_id = wc_placeholder_img_id();
+    if ($featured_image_id == $placeholder_image_id || $featured_image_id == null) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+/**
+ * function to get the featured image id of a product
+ * @param int $product_id
+ * @return 
+*/
+function gn_barcode_image_as_featured_product_image_check_if_image_has_been_processed($product_id) {
+    $metafieldname = 'gn_barcode_image_as_featured_product_image_processed';
+    $processed = get_post_meta($product_id, $metafieldname, true);
+    if ($processed == '1') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function gn_barcode_image_as_featured_product_image_get_products_with_no_featured_image() {
+//loop thought all products 
+    $args = array(
+        'post_type' => 'product',
+        'posts_per_page' => -1,
+        'post_status' => 'publish',
+    );
+    $loop = new WP_Query($args);
+    $products_with_no_featured_image = array();
+    while ($loop->have_posts()) : $loop->the_post();
+        $product_id = get_the_ID();
+        gn_barcode_image_as_featured_product_image_check_if_product_has_featured_image($product_id);
+        if (gn_barcode_image_as_featured_product_image_check_if_product_has_featured_image($product_id) == false) {
+            $products_with_no_featured_image[] = $product_id;
+        }
+        else 
+        //set to proccessed
+        {
+            $metafieldname = 'gn_barcode_image_as_featured_product_image_processed';
+            update_post_meta($product_id, $metafieldname, '1');
+        }
+        
+    endwhile;
+    wp_reset_query();
+    return $products_with_no_featured_image;
+}
 
 
 /**
