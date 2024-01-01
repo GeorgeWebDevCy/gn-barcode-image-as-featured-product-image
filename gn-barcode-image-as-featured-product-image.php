@@ -5,13 +5,13 @@
  * @package       GNBARCODEI
  * @author        George Nicolaou
  * @license       gplv2
- * @version       1.0.0
+ * @version       2.0.0
  *
  * @wordpress-plugin
  * Plugin Name:   GN Barcode Image As Featured Product Image
  * Plugin URI:    https://www.georgenicolaou.me/plugins/gn-barcode-image-as-featured-product-image
  * Description:   Find image from barcode and set featured product image
- * Version:       1.0.0
+ * Version:       2.0.0
  * Author:        George Nicolaou
  * Author URI:    https://www.georgenicolaou.me/
  * Text Domain:   gn-barcode-image-as-featured-product-image
@@ -29,7 +29,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 define( 'GNBARCODEI_NAME',			'GN Barcode Image As Featured Product Image' );
 
 // Plugin version
-define( 'GNBARCODEI_VERSION',		'1.0.0' );
+define( 'GNBARCODEI_VERSION',		'2.0.0' );
 
 // Plugin Root File
 define( 'GNBARCODEI_PLUGIN_FILE',	__FILE__ );
@@ -68,7 +68,7 @@ function gn_barcode_image_as_featured_product_image_check_for_woocommerce() {
         wp_die('Sorry, but this plugin requires WooCommerce to be installed and active. Please install WooCommerce and try again.');
     }
 }
-register_activation_hook(__FILE__, 'gn_product_image_remover_check_for_woocommerce');
+
 
 function save_image_to_upload_dir($image_data) {
     $upload_dir = wp_upload_dir();
@@ -607,6 +607,41 @@ function gn_barcode_image_as_featured_product_image_set_images_that_have_feature
     wp_reset_query();
     return;
 }
+
+function gn_custom_cron_intervals($schedules) {
+    $schedules['every_five_minutes'] = array(
+        'interval' => 5 * 60, // 5 minutes in seconds
+        'display'  => esc_html__('Every 5 Minutes', 'text-domain'),
+    );
+    return $schedules;
+}
+add_filter('cron_schedules', 'gn_custom_cron_intervals');
+
+
+// Schedule the cron event on plugin activation
+function gn_schedule_cron_event() {
+    if (!wp_next_scheduled('gn_barcode_image_cron_job')) {
+        wp_schedule_event(time(), 'every_five_minutes', 'gn_barcode_image_cron_job');
+    }
+}
+register_activation_hook(__FILE__, 'gn_schedule_cron_event');
+
+// Unschedule the cron event on plugin deactivation
+function gn_unschedule_cron_event() {
+    wp_clear_scheduled_hook('gn_barcode_image_cron_job');
+}
+register_deactivation_hook(__FILE__, 'gn_unschedule_cron_event');
+
+// Hook to run your function
+add_action('gn_barcode_image_cron_job', 'gn_barcode_image_as_featured_product_image_cron_callback');
+
+// Cron job callback function
+function gn_barcode_image_as_featured_product_image_cron_callback() {
+    // Your cron job logic here
+    gn_barcode_image_as_featured_product_image_submenu_page_callback();
+}
+
+
 
 /**
  * The main function to load the only instance
