@@ -83,10 +83,9 @@ function save_image_to_upload_dir($image_data) {
  *
  * @param string $file
  * @param int $product_id
- * @param string $barcode
  * @param string $mime_type
  */
-function set_featured_image_from_file($file, $product_id, $barcode, $mime_type) {
+function set_featured_image_from_file($file, $product_id, $mime_type) {
     $attachment = array(
         'post_mime_type' => $mime_type,
         'post_title'     => sanitize_file_name(basename($file)),
@@ -262,10 +261,18 @@ function gn_barcode_image_as_featured_product_image_submenu_page() {
         'gn_barcode_image_as_featured_product_image_submenu_page_callback' );
 }
 add_action( 'admin_menu', 'gn_barcode_image_as_featured_product_image_submenu_page' );
+// Include the OAuthSimple library if not already included
+if (!class_exists('OAuthSimple')) {
+    include_once('path/to/OAuthSimple.php'); // Replace with the actual path to OAuthSimple.php
+}
 
-//callback function for the submenu page
+// Main callback function
 function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
-    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
+
+
+    //set product to processed if it has a featured image
+    gn_barcode_image_as_featured_product_image_set_images_that_have_featured_images_to_processed();
+    $options = get_option('gn_barcode_image_as_featured_product_image');
     $consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
     $consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
     $requestTokenUrl = $options['gn_barcode_image_as_featured_product_image_request_token_url'];
@@ -274,12 +281,8 @@ function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
     $oauthToken = $options['gn_barcode_image_as_featured_product_image_oauth_token'];
     $oauthTokenSecret = $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'];
     $your_domain = $options['gn_barcode_image_as_featured_product_image_your_domain'];
-    //add use user agent option in the database
-    $options = get_option( 'gn_barcode_image_as_featured_product_image' );
     $user_agent = $options['gn_barcode_image_as_featured_product_image_user_agent'];
-    $your_domain = $options['gn_barcode_image_as_featured_product_image_your_domain'];
 
-    //show current settings
     echo "<h2>Current Settings</h2>";
     echo "<p>Consumer Key: " . $consumerKey . "</p>";
     echo "<p>Consumer Secret: " . $consumerSecret . "</p>";
@@ -290,137 +293,250 @@ function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
     echo "<p>OAuth Token Secret: " . $oauthTokenSecret . "</p>";
     echo "<p>User Agent: " . $user_agent . "</p>";
     echo "<p>Your Domain: " . $your_domain . "</p>";
+    if (empty($oauthToken) || empty($oauthTokenSecret)) {
+        // Authorize if tokens are empty
+        $output = gn_barcode_image_as_featured_product_image_authorize($consumerKey, $consumerSecret, $requestTokenUrl, $authorizeUrl, $accessTokenUrl, $your_domain, $user_agent);
+    } else {
+        echo 'Token already set <br>';
+        //get post id of products that have not been processed
+        $args = array(
+            'post_type' => 'product',
+            'posts_per_page' => 20,
+            'post_status' => 'publish',
+            'meta_query' => array(
+                array(
+                    'key' => 'gn_barcode_image_as_featured_product_image_processed',
+                    'value' => '1',
+                    'compare' => '!='
+                )
+            )
+        );
+        $products_that_are_not_processed = get_posts($args);
 
-    
-    //since the oauth token and oauth token secret are not saved in the database, I need to get them using the oauthsimple library
+        
+        
+
+        // Loop through the products and process them
+
+        foreach ($products_that_are_not_processed as $product) {
+            $sku = get_post_meta($product_id, '_sku', true);
+            $product_id = $product->ID;
+            //get product id 
+            
+            // Show the product sku and id for debugging in one line 
+            echo 'Product ID: ' . $product_id . ' Product SKU: ' . $sku . '<br>';
+
+            // Perform search using SKU
+            $output = gn_barcode_image_as_featured_product_image_perform_search_sku($consumerKey, $consumerSecret, $oauthToken, $oauthTokenSecret, $your_domain, $user_agent, $sku);
+            $output = json_decode($output);
+
+            //show output for debugging as object 
+            echo '<pre>';
+            print_r($output);
+            echo '</pre>';
+
+            // Check if the product has a featured image
+            if (!empty($output->results[0]->cover_image)) {
+                $image_url = $output->results[0]->cover_image;
+                $image_data = file_get_contents($image_url);
+                $file = save_image_to_upload_dir($image_data);
+                $mime_type = mime_content_type($file);
+                set_featured_image_from_file($file, $product_id, $mime_type);
+                
+                // Set to processed
+                $metafieldname = 'gn_barcode_image_as_featured_product_image_processed';
+                update_post_meta($product_id, $metafieldname, '1');
+            } else {
+                echo 'Product does not have a featured image. Marking as processed.<br>';
+                // Set to processed
+                $metafieldname = 'gn_barcode_image_as_featured_product_image_processed';
+                update_post_meta($product_id, $metafieldname, '1');
+            }
+        }
+    }
+}
+
+// Authorization function
+function gn_barcode_image_as_featured_product_image_authorize($consumerKey, $consumerSecret, $requestTokenUrl, $authorizeUrl, $accessTokenUrl, $your_domain, $user_agent) {
     $oauthObject = new OAuthSimple();
     $scope = 'https://api.discogs.com';
 
-    // Initialize the output in case we get stuck in the first step.
-$output = 'Authorizing...';
+    $output = 'Authorizing...';
 
-// Fill in your API key/consumer key you received when you registered your 
-// application with Discogs.
-$signatures = array( 'consumer_key'     => $consumerKey,
-                     'shared_secret'    => $consumerSecret);
+    $signatures = array(
+        'consumer_key' => $consumerKey,
+        'shared_secret' => $consumerSecret
+    );
 
-// Check if verifier exists.  If not, get a request token
-if (!isset($_GET['oauth_verifier'])) {
-    // To get a Request Token, we make a request to the OAuthGetRequestToken endpoint,
-    // submitting the scope of the access we need (api.discogs.com)
-	  // and also tell Discogs where to redirect once authorization is submitted
-    $result = $oauthObject->sign(array(
-        'path'      =>$requestTokenUrl,
-        'parameters'=> array(
-            'scope'         => $scope,
-            'oauth_callback'=> $your_domain . '/wp-admin/admin.php?page=gn-barcode-image-as-featured-product-image-submenu-page'),
-        'signatures'=> $signatures));
+    if (!isset($_GET['oauth_verifier'])) {
+        $result = $oauthObject->sign(array(
+            'path' => $requestTokenUrl,
+            'parameters' => array(
+                'scope' => $scope,
+                'oauth_callback' => $your_domain . '/wp-admin/admin.php?page=gn-barcode-image-as-featured-product-image-submenu-page'
+            ),
+            'signatures' => $signatures
+        ));
 
-    // The above object generates a simple URL that includes a signature, the 
-    // needed parameters, and the web page that will handle our request.
-    // Using the cUrl libary, we send a GET request to the signed URL
-	  // then add the response into a string variable ($r)
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_USERAGENT, 'YOUR_USER_AGENT/0.1 +http://yourdomain.com');
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
-    
-    $r = curl_exec($ch);
-    curl_close($ch);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
 
-    // Then we parse the string for the request token and the matching token secret. 
-    parse_str($r, $returned_items);
-    $request_token = $returned_items['oauth_token'];
-    $request_token_secret = $returned_items['oauth_token_secret'];
-	
-    // We store the token and secret in a cookie for later when authorization is complete
-    setcookie("oauth_token_secret", $request_token_secret, time()+3600);
-    
-    // Next we generate a URL for an authorization request, then redirect to that URL
-    // so the user can authorize our request.  
-    // The user could deny the request, so we should add some code later to handle that situation
-    $result = $oauthObject->sign(array(
-        'path'      => $authorizeUrl,
-        'parameters'=> array(
-            'oauth_token' => $request_token),
-        'signatures'=> $signatures));
+        $r = curl_exec($ch);
+        curl_close($ch);
 
-    // Here is where we redirect
-    header("Location:$result[signed_url]");
-    exit;
+        parse_str($r, $returned_items);
+        $request_token = $returned_items['oauth_token'];
+        $request_token_secret = $returned_items['oauth_token_secret'];
+
+        setcookie("oauth_token_secret", $request_token_secret, time() + 3600);
+
+        $result = $oauthObject->sign(array(
+            'path' => $authorizeUrl,
+            'parameters' => array(
+                'oauth_token' => $request_token
+            ),
+            'signatures' => $signatures
+        ));
+
+        header("Location:$result[signed_url]");
+        exit;
+    } else {
+        $signatures['oauth_secret'] = $_COOKIE['oauth_token_secret'];
+        $signatures['oauth_token'] = $_GET['oauth_token'];
+
+        $result = $oauthObject->sign(array(
+            'path' => $accessTokenUrl,
+            'parameters' => array(
+                'oauth_verifier' => $_GET['oauth_verifier'],
+                'oauth_token' => $_GET['oauth_token']
+            ),
+            'signatures' => $signatures
+        ));
+
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
+        $r = curl_exec($ch);
+
+        parse_str($r, $returned_items);
+        $access_token = $returned_items['oauth_token'];
+        $access_token_secret = $returned_items['oauth_token_secret'];
+
+        $oauth_props = array(
+            'oauth_token' => $access_token,
+            'oauth_secret' => $access_token_secret
+        );
+
+        $oauthObject->reset();
+
+        $params['path'] = "$scope/database/search";
+        $params['signatures'] = $oauth_props;
+        $params['parameters'] = 'q=nevermind&artist=nirvana&per_page=3&page=1';
+
+        $result = $oauthObject->sign($params);
+
+        $url = $result['signed_url'];
+
+        curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+        $output = curl_exec($ch);
+
+        curl_close($ch);
+
+        //echo $output;
+        //$output = json_decode($output);
+        //$image_url = $output->results[0]->cover_image;
+        //echo "<br><img src='" . $image_url . "' />";
+    }
+
+    return $output;
 }
-else {
-    // If we have a oauth_verifier, fetch the cookie and amend our signature array with the request
-    // token and secret.
-    $signatures['oauth_secret'] = $_COOKIE['oauth_token_secret'];
-    $signatures['oauth_token'] = $_GET['oauth_token'];
-    
-    // Build the request-URL
-    $result = $oauthObject->sign(array(
-        'path'      => $accessTokenUrl,
-        'parameters'=> array(
-            'oauth_verifier' => $_GET['oauth_verifier'],
-            'oauth_token'    => $_GET['oauth_token']),
-        'signatures'=> $signatures));
 
-    // ... and get the web page and store it as a string again.
-    $ch = curl_init();
-	  //Set the User-Agent Identifier
-    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
-    $r = curl_exec($ch);
+// Function to perform search
+function gn_barcode_image_as_featured_product_image_perform_search_sku($consumerKey, $consumerSecret, $oauthToken, $oauthTokenSecret, $your_domain, $user_agent, $sku) {
 
-    // parse the string to get you access token
-    parse_str($r, $returned_items);        
-    $access_token = $returned_items['oauth_token'];
-    $access_token_secret = $returned_items['oauth_token_secret'];
-    
-    // We can use this long-term access token to request Discogs API data,
-    // for example, the identity of the authenticated user. 
-    // All Discogs API data requests will have to be signed just as before,
-    // but we can now bypass the authorization process and use the long-term
-    // access token you hopefully store somewhere permanently.
-    $oauth_props = array( 'oauth_token'     => $access_token,
-                     'oauth_secret'    => $access_token_secret);
+    $oauthObject = new OAuthSimple();
+    $scope = 'https://api.discogs.com';
 
-    // reset the oauth object
+    $output = 'Performing Search...';
+
+    $signatures = array(
+        'consumer_key' => $consumerKey,
+        'shared_secret' => $consumerSecret,
+        'oauth_secret' => $oauthTokenSecret,
+        'oauth_token' => $oauthToken
+    );
+
     $oauthObject->reset();
-    
-    // rebuild it with the URL of the resource you want to access and the token/secret
+
     $params['path'] = "$scope/database/search";
-    $params['signatures'] = $oauth_props;
-    
-    // add optional parameters as needed  
-    // For example: when using the search endpoint, and/or when passing pagination options
-    $params['parameters'] = 'q=nevermind&artist=nirvana&per_page=3&page=1';
-    
+    $params['signatures'] = $signatures;
+    $params['parameters'] = 'q=' . $sku . '&per_page=1&page=1';
+
     $result = $oauthObject->sign($params);
 
-    // Now that we have our signed URL, we can make one more call to the API
-    // which will grant us access to an authenticated resource
-    // such as http://api.discogs.com/oauth/identity
 
-    $url = $result['signed_url'];
-	
-    curl_setopt($ch, CURLOPT_USERAGENT, 'YOUR_USER_AGENT/0.1 +http://yourdomain.com');
-    curl_setopt($ch, CURLOPT_URL, $url);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 
-    //Execute the curl session
     $output = curl_exec($ch);
-	
-    curl_close($ch);
-	
-    // print the JSON output to the page
-    echo $output;
-    //output image from api on page
-    $output = json_decode($output);
-    $image_url = $output->results[0]->cover_image;
-    echo "<br><img src='" . $image_url . "' />";
 
-}        
- }
+    curl_close($ch);
+
+    //echo $output;
+    //$output = json_decode($output);
+    //$image_url = $output->results[0]->cover_image;
+    //echo "<br><img src='" . $image_url . "' />";
+
+    return $output;
+}
+
+
+function gn_barcode_image_as_featured_product_image_perform_search_title($consumerKey, $consumerSecret, $oauthToken, $oauthTokenSecret, $your_domain, $user_agent, $title) {
+
+    $oauthObject = new OAuthSimple();
+    $scope = 'https://api.discogs.com';
+
+    $output = 'Performing Search...';
+
+    $signatures = array(
+        'consumer_key' => $consumerKey,
+        'shared_secret' => $consumerSecret,
+        'oauth_secret' => $oauthTokenSecret,
+        'oauth_token' => $oauthToken
+    );
+
+    $oauthObject->reset();
+
+    $params['path'] = "$scope/database/search";
+    $params['signatures'] = $signatures;
+    $params['parameters'] = 'q=' . $title . '&per_page=1&page=1';
+
+    $result = $oauthObject->sign($params);
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_USERAGENT, $user_agent);
+    curl_setopt($ch, CURLOPT_URL, $result['signed_url']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+
+    $output = curl_exec($ch);
+
+    curl_close($ch);
+
+    //echo $output;
+    //$output = json_decode($output);
+    //$image_url = $output->results[0]->cover_image;
+    //echo "<br><img src='" . $image_url . "' />";
+
+    return $output;
+}
 
 // Function to get the ID of the placeholder image
 function wc_placeholder_img_id() {
@@ -428,6 +544,7 @@ function wc_placeholder_img_id() {
     $placeholder_id = attachment_url_to_postid($placeholder);
     return $placeholder_id;
 }
+
 
 
 
@@ -463,7 +580,8 @@ function gn_barcode_image_as_featured_product_image_check_if_image_has_been_proc
     }
 }
 
-function gn_barcode_image_as_featured_product_image_get_products_with_no_featured_image() {
+
+function gn_barcode_image_as_featured_product_image_set_images_that_have_featured_images_to_processed() {
 //loop thought all products 
     $args = array(
         'post_type' => 'product',
@@ -471,12 +589,12 @@ function gn_barcode_image_as_featured_product_image_get_products_with_no_feature
         'post_status' => 'publish',
     );
     $loop = new WP_Query($args);
-    $products_with_no_featured_image = array();
+    
     while ($loop->have_posts()) : $loop->the_post();
         $product_id = get_the_ID();
         gn_barcode_image_as_featured_product_image_check_if_product_has_featured_image($product_id);
         if (gn_barcode_image_as_featured_product_image_check_if_product_has_featured_image($product_id) == false) {
-            $products_with_no_featured_image[] = $product_id;
+        //do nothing 
         }
         else 
         //set to proccessed
@@ -487,9 +605,8 @@ function gn_barcode_image_as_featured_product_image_get_products_with_no_feature
         
     endwhile;
     wp_reset_query();
-    return $products_with_no_featured_image;
+    return;
 }
-
 
 /**
  * The main function to load the only instance
