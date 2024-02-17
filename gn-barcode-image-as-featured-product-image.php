@@ -271,7 +271,7 @@ function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
 
 
     //set product to processed if it has a featured image
-    gn_barcode_image_as_featured_product_image_set_images_that_have_featured_images_to_processed();
+    //gn_barcode_image_as_featured_product_image_set_images_that_have_featured_images_to_processed();
     $options = get_option('gn_barcode_image_as_featured_product_image');
     $consumerKey = $options['gn_barcode_image_as_featured_product_image_consumer_key'];
     $consumerSecret = $options['gn_barcode_image_as_featured_product_image_consumer_secret'];
@@ -319,8 +319,10 @@ function gn_barcode_image_as_featured_product_image_submenu_page_callback() {
         // Loop through the products and process them
 
         foreach ($products_that_are_not_processed as $product) {
+			$product_id = $product->ID;
             $sku = get_post_meta($product_id, '_sku', true);
-            $product_id = $product->ID;
+			//$product_title = get_the_title($product_id);
+			//$sku = $product_title;
             //get product id 
             
             // Show the product sku and id for debugging in one line 
@@ -429,6 +431,13 @@ function gn_barcode_image_as_featured_product_image_authorize($consumerKey, $con
             'oauth_token' => $access_token,
             'oauth_secret' => $access_token_secret
         );
+		
+		// Save tokens in options
+    $options = get_option('gn_barcode_image_as_featured_product_image');
+    $options['gn_barcode_image_as_featured_product_image_oauth_token'] = $access_token;
+    $options['gn_barcode_image_as_featured_product_image_oauth_token_secret'] = $access_token_secret;
+    update_option('gn_barcode_image_as_featured_product_image', $options);
+
 
         $oauthObject->reset();
 
@@ -609,9 +618,9 @@ function gn_barcode_image_as_featured_product_image_set_images_that_have_feature
 }
 
 function gn_custom_cron_intervals($schedules) {
-    $schedules['every_five_minutes'] = array(
-        'interval' => 5 * 60, // 5 minutes in seconds
-        'display'  => esc_html__('Every 5 Minutes', 'text-domain'),
+    $schedules['every_two_minutes'] = array(
+        'interval' => 2 * 60, // 5 minutes in seconds
+        'display'  => esc_html__('Every 2 Minutes', 'text-domain'),
     );
     return $schedules;
 }
@@ -621,7 +630,7 @@ add_filter('cron_schedules', 'gn_custom_cron_intervals');
 // Schedule the cron event on plugin activation
 function gn_schedule_cron_event() {
     if (!wp_next_scheduled('gn_barcode_image_cron_job')) {
-        wp_schedule_event(time(), 'every_five_minutes', 'gn_barcode_image_cron_job');
+        wp_schedule_event(time(), 'every_two_minutes', 'gn_barcode_image_cron_job');
     }
 }
 register_activation_hook(__FILE__, 'gn_schedule_cron_event');
